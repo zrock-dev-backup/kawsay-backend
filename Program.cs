@@ -16,7 +16,7 @@ builder.Services.AddSwaggerGen();
 
 // Configure DbContext with SQLite
 builder.Services.AddDbContext<KawsayDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
 
