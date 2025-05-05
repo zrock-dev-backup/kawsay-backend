@@ -1,27 +1,44 @@
 // Controllers/CoursesController.cs
 using KawsayApiMockup.Data;
 using KawsayApiMockup.DTOs;
+using KawsayApiMockup.Entities; // Import Entities
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore; // Import EF Core namespace
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks; // Use async methods
 
 namespace KawsayApiMockup.Controllers
 {
     [ApiController]
-    [Route("kawsay/[controller]")] // Base path /kawsay/courses
+    [Route("kawsay/[controller]")]
     public class CoursesController : ControllerBase
     {
-        [HttpGet] // GET /kawsay/courses
-        public ActionResult<IEnumerable<Course>> GetCourses()
+        private readonly KawsayDbContext _context; // Inject DbContext
+
+        public CoursesController(KawsayDbContext context)
         {
-            return Ok(MockData.Courses);
+            _context = context;
         }
 
-        // Added for API completeness, not used by current frontend
-        [HttpGet("{id}")] // GET /kawsay/courses/{id}
-        public ActionResult<Course> GetCourse(int id)
+        [HttpGet] // GET /kawsay/courses
+        public async Task<ActionResult<IEnumerable<Course>>> GetCourses()
         {
-            var course = MockData.Courses.FirstOrDefault(c => c.Id == id);
+            // Fetch entities and map to DTOs
+            var courses = await _context.Courses
+                                        .Select(c => new Course { Id = c.Id, Name = c.Name, Code = c.Code })
+                                        .ToListAsync();
+            return Ok(courses);
+        }
+
+        [HttpGet("{id}")] // GET /kawsay/courses/{id}
+        public async Task<ActionResult<Course>> GetCourse(int id)
+        {
+            // Fetch entity and map to DTO
+            var course = await _context.Courses
+                                       .Where(c => c.Id == id)
+                                       .Select(c => new Course { Id = c.Id, Name = c.Name, Code = c.Code })
+                                       .FirstOrDefaultAsync();
             if (course == null)
             {
                 return NotFound();
@@ -29,17 +46,25 @@ namespace KawsayApiMockup.Controllers
             return Ok(course);
         }
 
-        // Added for API completeness, not used by current frontend
         [HttpPost] // POST /kawsay/courses
-         public ActionResult<Course> CreateCourse([FromBody] Course course)
+         public async Task<ActionResult<Course>> CreateCourse([FromBody] Course courseDto) // Parameter name change to avoid conflict
          {
              if (!ModelState.IsValid)
              {
                  return BadRequest(ModelState);
              }
-             // In a real app, you'd add validation (e.g., unique code)
-             var createdCourse = MockData.AddCourse(course);
-             return CreatedAtAction(nameof(GetCourse), new { id = createdCourse.Id }, createdCourse);
+
+             // Map DTO to Entity
+             var courseEntity = new CourseEntity { Name = courseDto.Name, Code = courseDto.Code };
+
+             // Add to context and save
+             _context.Courses.Add(courseEntity);
+             await _context.SaveChangesAsync(); // This assigns the database-generated ID to courseEntity.Id
+
+             // Map created Entity back to DTO for response
+             var createdCourseDto = new Course { Id = courseEntity.Id, Name = courseEntity.Name, Code = courseEntity.Code };
+
+             return CreatedAtAction(nameof(GetCourse), new { id = createdCourseDto.Id }, createdCourseDto);
          }
     }
 }
