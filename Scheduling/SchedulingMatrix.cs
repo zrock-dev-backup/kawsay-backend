@@ -2,7 +2,7 @@
 
 using System.Text;
 
-namespace KawsayApiMockup.Scheduling
+namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your project
 {
     // Represents a matrix (grid) for tracking availability or constraints over days and periods.
     public class SchedulingMatrix
@@ -17,35 +17,36 @@ namespace KawsayApiMockup.Scheduling
             Rows = rows;
             Columns = columns;
             _matrix = new int[Rows, Columns];
-            // Matrix is initialized to all 0s (available) by default
+            // Matrix is initialized to all 0s (available) by default in C# for int arrays
         }
 
-        // Get the value at a specific day and period
+        // Get the value at a specific day and period index (0-based)
         public int Get(int row, int column)
         {
             // Defensive check for out-of-bounds access
             if (row < 0 || row >= Rows || column < 0 || column >= Columns)
             {
                 // If access is out of bounds, treat it as unavailable (1)
-                // This prevents errors if the algorithm tries to check beyond the grid
+                // This prevents errors if the algorithm tries to check beyond the grid boundaries.
                 System.Console.WriteLine($"Warning: Attempted to Get matrix out of bounds [{row},{column}]. Matrix size: [{Rows},{Columns}]. Returning 1 (unavailable).");
-                return 1;
+                return 1; // Return 1 to indicate unavailability outside valid bounds
             }
             return _matrix[row, column];
         }
 
-        // Set the value at a specific day and period
+        // Set the value at a specific day and period index (0-based)
         public void Set(int row, int column, int value)
         {
              // Defensive check for out-of-bounds access
              if (row < 0 || row >= Rows || column < 0 || column >= Columns)
             {
                 System.Console.WriteLine($"Warning: Attempted to Set matrix out of bounds [{row},{column}]. Matrix size: [{Rows},{Columns}]. Ignoring set operation.");
-                 return;
+                 return; // Ignore set operations outside valid bounds
             }
             _matrix[row, column] = value;
         }
 
+        // Optional: Override ToString for debugging
         public override string ToString()
         {
             var sb = new StringBuilder();
@@ -53,7 +54,7 @@ namespace KawsayApiMockup.Scheduling
             {
                 for (int j = 0; j < Columns; j++)
                 {
-                    sb.Append(_matrix[i, j] + " ");
+                    sb.Append(_matrix[i, j] + (j == Columns - 1 ? "" : " "));
                 }
 
                 sb.AppendLine();

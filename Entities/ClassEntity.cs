@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
 
-namespace KawsayApiMockup.Entities
+namespace KawsayApiMockup.Entities // Ensure this namespace is correct for your project
 {
     public class ClassEntity
     {
@@ -24,7 +24,16 @@ namespace KawsayApiMockup.Entities
         // Navigation property to the associated teacher (nullable)
         public TeacherEntity? Teacher { get; set; }
 
-        // Navigation property for scheduled occurrences
+        // --- NEW Properties for Scheduling Algorithm Input ---
+        [Required] // These properties are required for the algorithm to know what to schedule
+        public int RequiredOccurrenceCount { get; set; } // How many occurrences are needed for this class
+
+        [Required] // These properties are required for the algorithm to know what to schedule
+        public int OccurrenceLength { get; set; } // How many periods long each occurrence should be
+        // ------------------------------------------------------
+
+
+        // Navigation property for scheduled occurrences (These are the *results* of scheduling)
         public ICollection<ClassOccurrenceEntity> Occurrences { get; set; } = new List<ClassOccurrenceEntity>();
     }
 }
