@@ -2,6 +2,8 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System; // Import for TimeSpan
+// Remove Dayjs import: using Dayjs; // Import Dayjs namespace for sorting periods (used for consistency, though not strictly needed by algorithm core)
 
 namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your project
 {
@@ -10,13 +12,19 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
     public static class SchedulingAlgorithm
     {
          // Need access to dayOrder for sorting consistency when mapping indices back to DB IDs later.
-         // This list itself isn't used by the algorithm's logic, but its order is important for the service
+         // This list itself isn't used by the algorithm's logic (only indices), but its order is important for the service
          // to correctly interpret the 0-based day indices returned by the algorithm's results (ScheduledTimeslotResult.R).
          public static readonly List<string> dayOrder = new List<string> {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
-        // The main handler for a single requirement line.
-        // Tries to schedule 'q' occurrences for the given requirement line in one attempt cycle.
-        // Returns true if all 'q' occurrences were successfully scheduled, false otherwise.
+        /// <summary>
+        /// Attempts to schedule all 'q' occurrences for a single requirement line.
+        /// This is one attempt cycle for this specific requirement within the main algorithm loop.
+        /// </summary>
+        /// <param name="requirementLine">The requirement to schedule.</param>
+        /// <param name="entities">The list of all scheduling entities.</param>
+        /// <param name="numDays">Number of days in the timetable grid.</param>
+        /// <param name="numPeriods">Number of periods per day in the timetable grid.</param>
+        /// <returns>True if all 'q' occurrences were successfully scheduled in this attempt, false otherwise.</returns>
         public static bool Handler(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities, int numDays, int numPeriods)
         {
              // Re-initialize E matrix for this requirement at the start of each Handler call
@@ -113,7 +121,7 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
         {
             var matrixE = requirementLine.E; // Availability matrix for this requirement
 
-            // Iterate through the grid (E matrix) row by row, column by column
+            // Iterate through the grid (E matrix) row by row (days), column by column (periods)
             // to find the first potentially available start slot (E[day, period] == 0)
             for (var dayIndex = 0; dayIndex < numDays; dayIndex++)
             {
@@ -136,8 +144,7 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
                 }
             }
 
-            // If the loops complete without finding and scheduling a slot:
-            return false; // Could not find any available slot for this occurrence in the current state of jC matrices.
+            return false; // Could not find any available slot for this occurrence after checking all possibilities
         }
 
         // Validates if a potential slot (startDayIndex, startPeriodIndex) and its 'length' subsequent periods
@@ -208,5 +215,11 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
                 }
             }
         }
+
+        // The original code had a ResetJc function. In this EF Core version,
+        // the jC matrices are part of the in-memory SchedulingEntity objects
+        // created for a single generation run. Resetting is handled by re-initializing
+        // them and potentially repopulating fixed constraints at the start of each
+        // full attempt cycle in the SchedulingService.
     }
 }

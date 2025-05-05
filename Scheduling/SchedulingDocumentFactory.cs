@@ -12,9 +12,15 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
     // based on the data fetched from the database for a specific timetable.
     public static class SchedulingDocumentFactory
     {
-        // This method translates database entities into algorithm requirements and entities.
-        // It prepares the input 'document' (list of requirements) and the list of all entities
-        // that the algorithm needs to consider.
+        /// <summary>
+        /// Creates a linked list of SchedulingRequirementLine objects (the "document")
+        /// and potentially populates the global list of SchedulingEntities based on
+        /// database data for a specific timetable.
+        /// </summary>
+        /// <param name="classesToSchedule">List of ClassEntity objects to convert into requirements.</param>
+        /// <param name="allSchedulingEntities">The pre-populated list of all potential SchedulingEntities (Teachers, Classes, etc.).</param>
+        /// <param name="timetable">The TimetableEntity structure (days, periods) for dimensions.</param>
+        /// <returns>A LinkedList of SchedulingRequirementLine objects representing the scheduling problem.</returns>
         public static LinkedList<SchedulingRequirementLine> GetDocument(
             List<ClassEntity> classesToSchedule, // Classes from the DB that need scheduling
             List<SchedulingEntity> allSchedulingEntities, // The pre-populated list of all entities (Teachers, Classes, etc.)
@@ -27,6 +33,7 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
             foreach (var classEntity in classesToSchedule)
             {
                  // Get the scheduling parameters from the ClassEntity
+                 // These properties were added via migration
                  var requiredOccurrenceCount = classEntity.RequiredOccurrenceCount;
                  var occurrenceLength = classEntity.OccurrenceLength;
 
@@ -50,7 +57,7 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
 
                  // Add Class SchedulingEntity ID. We use a predefined offset from the SchedulingService.
                  var classSchedulingEntityId = classEntity.Id + SchedulingService.ClassEntityIdOffset; // Use the offset defined in the Service
-                 // Validate that the class entity exists in the global list (it should, as it's added in the Service)
+                 // Validate that the class entity exists in the global list (it should, as it's added in the Service before calling the factory)
                  if (allSchedulingEntities.Any(se => se.Id == classSchedulingEntityId))
                  {
                       sEntityIdsForClass.Add(classSchedulingEntityId);

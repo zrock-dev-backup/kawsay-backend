@@ -16,11 +16,11 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
         public ScheduledTimeslotResult R { get; set; } // The results: list of scheduled slots for this requirement (populated by the algorithm)
         public List<int> Z { get; set; } // Period Constraints: 0 means period is unavailable for *this requirement*, 1 means potentially available
         public int length { get; set; } // The length (number of consecutive periods) of each occurrence for this requirement
-        public SchedulingMatrix E { get; set; } // The Availability Matrix for *this requirement* (calculated by the algorithm in each attempt)
+        public SchedulingMatrix E { get; set; } // The Availability Matrix for *this requirement* (calculated by algorithm)
 
 
         // --- Constructor ---
-        // Requires quantity, length, involved entity IDs, and timetable dimensions (for matrix initialization)
+        // Requires quantity, length, involved entities, and timetable dimensions (for matrix initialization)
         public SchedulingRequirementLine(int q, int length, List<int> s, int numDays, int numPeriods)
         {
             this.q = q;

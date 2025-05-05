@@ -28,7 +28,7 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
             {
                 // If access is out of bounds, treat it as unavailable (1)
                 // This prevents errors if the algorithm tries to check beyond the grid boundaries.
-                System.Console.WriteLine($"Warning: Attempted to Get matrix out of bounds [{row},{column}]. Matrix size: [{Rows},{Columns}]. Returning 1 (unavailable).");
+                // System.Console.WriteLine($"Warning: Attempted to Get matrix out of bounds [{row},{column}]. Matrix size: [{Rows},{Columns}]. Returning 1 (unavailable)."); // Optional logging
                 return 1; // Return 1 to indicate unavailability outside valid bounds
             }
             return _matrix[row, column];
@@ -40,7 +40,7 @@ namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your projec
              // Defensive check for out-of-bounds access
              if (row < 0 || row >= Rows || column < 0 || column >= Columns)
             {
-                System.Console.WriteLine($"Warning: Attempted to Set matrix out of bounds [{row},{column}]. Matrix size: [{Rows},{Columns}]. Ignoring set operation.");
+                // System.Console.WriteLine($"Warning: Attempted to Set matrix out of bounds [{row},{column}]. Matrix size: [{Rows},{Columns}]. Ignoring set operation."); // Optional logging
                  return; // Ignore set operations outside valid bounds
             }
             _matrix[row, column] = value;

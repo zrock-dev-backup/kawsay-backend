@@ -24,12 +24,12 @@ namespace KawsayApiMockup.Entities // Ensure this namespace is correct for your 
         // Navigation property to the associated teacher (nullable)
         public TeacherEntity? Teacher { get; set; }
 
-        // --- NEW Properties for Scheduling Algorithm Input ---
+        // --- Properties for Scheduling Algorithm Input ---
         [Required] // These properties are required for the algorithm to know what to schedule
-        public int RequiredOccurrenceCount { get; set; } // How many occurrences are needed for this class
+        public int RequiredOccurrenceCount { get; set; } // How many occurrences are needed for this class (q)
 
         [Required] // These properties are required for the algorithm to know what to schedule
-        public int OccurrenceLength { get; set; } // How many periods long each occurrence should be
+        public int OccurrenceLength { get; set; } // How many periods long each occurrence should be (length)
         // ------------------------------------------------------
 
 
