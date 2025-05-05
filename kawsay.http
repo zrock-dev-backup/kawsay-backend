@@ -1,0 +1,6 @@
+@kawsay_HostAddress = http://localhost:5167
+
+GET {{kawsay_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
