@@ -1,382 +1,345 @@
-// Controllers/ClassesController.cs
 using KawsayApiMockup.Data;
 using KawsayApiMockup.DTOs;
-using KawsayApiMockup.Entities; // Import Entities
+using KawsayApiMockup.Entities;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore; // Import EF Core namespace
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks; // Use async methods
+using Microsoft.EntityFrameworkCore;
 
-namespace KawsayApiMockup.Controllers
+namespace KawsayApiMockup.Controllers;
+
+[ApiController]
+[Route("kawsay")]
+public class ClassesController : ControllerBase
 {
-    [ApiController]
-    [Route("kawsay")] // Base path /kawsay
-    public class ClassesController : ControllerBase
+    private readonly KawsayDbContext _context;
+
+    public ClassesController(KawsayDbContext context)
     {
-        private readonly KawsayDbContext _context; // Inject DbContext
+        _context = context;
+    }
 
-        public ClassesController(KawsayDbContext context)
+
+    [HttpGet("classes")]
+    public async Task<ActionResult<IEnumerable<Class>>> GetClassesByTimetable([FromQuery] int timetableId)
+    {
+        var timetableExists = await _context.Timetables.AnyAsync(t => t.Id == timetableId);
+        if (!timetableExists) return NotFound(new { message = $"Timetable with ID {timetableId} not found." });
+
+
+        var classes = await _context.Classes
+            .Include(c => c.Course)
+            .Include(c => c.Teacher)
+            .Include(c => c.Occurrences)
+            .Where(c => c.TimetableId == timetableId)
+            .ToListAsync();
+
+
+        var classDtos = classes.Select(cls => new Class
         {
-            _context = context;
+            Id = cls.Id,
+            TimetableId = cls.TimetableId,
+            Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
+            Teacher = cls.Teacher != null
+                ? new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type }
+                : null,
+            Occurrences = cls.Occurrences.Select(o => new ClassOccurrence
+            {
+                Id = o.Id,
+                DayId = o.DayId,
+                StartPeriodId = o.StartPeriodId,
+                Length = o.Length
+            }).ToList()
+        }).ToList();
+
+        return Ok(classDtos);
+    }
+
+    [HttpGet("class/{id}")]
+    public async Task<ActionResult<Class>> GetClass(int id)
+    {
+        var cls = await _context.Classes
+            .Include(c => c.Course)
+            .Include(c => c.Teacher)
+            .Include(c => c.Occurrences)
+            .Where(c => c.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (cls == null) return NotFound();
+
+
+        var classDto = new Class
+        {
+            Id = cls.Id,
+            TimetableId = cls.TimetableId,
+            Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
+            Teacher = cls.Teacher != null
+                ? new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type }
+                : null,
+            Occurrences = cls.Occurrences.Select(o => new ClassOccurrence
+            {
+                Id = o.Id,
+                DayId = o.DayId,
+                StartPeriodId = o.StartPeriodId,
+                Length = o.Length
+            }).ToList()
+        };
+
+        return Ok(classDto);
+    }
+
+    [HttpPost("class")]
+    public async Task<ActionResult<Class>> CreateClass([FromBody] CreateClassRequest request)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (request.Occurrences == null || request.Occurrences.Count == 0)
+            return BadRequest(new { message = "At least one occurrence is required." });
+        if (request.Occurrences.Any(o => o.Length <= 0))
+            return BadRequest(new { message = "Occurrence length must be positive." });
+
+
+        var course = await _context.Courses.FindAsync(request.CourseId);
+        if (course == null) return BadRequest(new { message = $"Course with ID {request.CourseId} not found." });
+
+        TeacherEntity? teacher = null;
+        if (request.TeacherId.HasValue)
+        {
+            teacher = await _context.Teachers.FindAsync(request.TeacherId.Value);
+            if (teacher == null)
+                return BadRequest(new { message = $"Teacher with ID {request.TeacherId.Value} not found." });
+        }
+
+        var timetable = await _context.Timetables
+            .Include(t => t.Days)
+            .Include(t => t.Periods)
+            .Where(t => t.Id == request.TimetableId)
+            .FirstOrDefaultAsync();
+        if (timetable == null)
+            return BadRequest(new { message = $"Timetable with ID {request.TimetableId} not found." });
+
+
+        foreach (var occ in request.Occurrences)
+        {
+            if (!timetable.Days.Any(d => d.Id == occ.DayId))
+                return BadRequest(new
+                    { message = $"Day ID {occ.DayId} not found in timetable {request.TimetableId}." });
+            if (!timetable.Periods.Any(p => p.Id == occ.StartPeriodId))
+                return BadRequest(new
+                    { message = $"Period ID {occ.StartPeriodId} not found in timetable {request.TimetableId}." });
+            var startPeriodIndex = timetable.Periods.OrderBy(p => p.Start).ToList()
+                .FindIndex(p => p.Id == occ.StartPeriodId);
+            if (startPeriodIndex != -1 && startPeriodIndex + occ.Length > timetable.Periods.Count)
+                return BadRequest(new
+                {
+                    message =
+                        $"Occurrence length {occ.Length} for period ID {occ.StartPeriodId} exceeds available periods in timetable {request.TimetableId}."
+                });
         }
 
 
-        [HttpGet("classes")] // GET /kawsay/classes?timetableId={id}
-        public async Task<ActionResult<IEnumerable<Class>>> GetClassesByTimetable([FromQuery] int timetableId)
+        var classEntity = new ClassEntity
         {
-            // In a real app, validate if timetableId exists (already done by EF Core relationship loading)
-             var timetableExists = await _context.Timetables.AnyAsync(t => t.Id == timetableId);
-             if (!timetableExists)
-             {
-                 return NotFound(new { message = $"Timetable with ID {timetableId} not found." });
-             }
-
-            // Fetch classes including related Course, Teacher, and Occurrences
-            var classes = await _context.Classes
-                                        .Include(c => c.Course)
-                                        .Include(c => c.Teacher)
-                                        .Include(c => c.Occurrences)
-                                        .Where(c => c.TimetableId == timetableId)
-                                        .ToListAsync();
-
-            // Map entities to DTOs
-            var classDtos = classes.Select(cls => new Class
+            TimetableId = request.TimetableId,
+            CourseId = request.CourseId,
+            TeacherId = request.TeacherId,
+            Occurrences = request.Occurrences.Select(o => new ClassOccurrenceEntity
             {
-                Id = cls.Id,
-                TimetableId = cls.TimetableId,
-                Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
-                Teacher = cls.Teacher != null ? new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type } : null,
-                Occurrences = cls.Occurrences.Select(o => new ClassOccurrence
-                {
-                    Id = o.Id,
-                    DayId = o.DayId,
-                    StartPeriodId = o.StartPeriodId,
-                    Length = o.Length
-                }).ToList()
-            }).ToList();
+                DayId = o.DayId,
+                StartPeriodId = o.StartPeriodId,
+                Length = o.Length
+            }).ToList()
+        };
 
-            return Ok(classDtos);
-        }
 
-        [HttpGet("class/{id}")] // GET /kawsay/class/{id}
-        public async Task<ActionResult<Class>> GetClass(int id)
+        _context.Classes.Add(classEntity);
+        await _context.SaveChangesAsync();
+
+
+        var createdClassEntity = await _context.Classes
+            .Include(c => c.Course)
+            .Include(c => c.Teacher)
+            .Include(c => c.Occurrences)
+            .Where(c => c.Id == classEntity.Id)
+            .FirstOrDefaultAsync();
+
+
+        var createdClassDto = new Class
         {
-            // Fetch class including related Course, Teacher, and Occurrences
-            var cls = await _context.Classes
-                                    .Include(c => c.Course)
-                                    .Include(c => c.Teacher)
-                                    .Include(c => c.Occurrences)
-                                    .Where(c => c.Id == id)
-                                    .FirstOrDefaultAsync();
-
-            if (cls == null)
+            Id = createdClassEntity!.Id,
+            TimetableId = createdClassEntity.TimetableId,
+            Course = new Course
             {
-                return NotFound();
-            }
-
-            // Map entity to DTO
-             var classDto = new Class
-            {
-                Id = cls.Id,
-                TimetableId = cls.TimetableId,
-                Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
-                Teacher = cls.Teacher != null ? new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type } : null,
-                Occurrences = cls.Occurrences.Select(o => new ClassOccurrence
+                Id = createdClassEntity.Course.Id, Name = createdClassEntity.Course.Name,
+                Code = createdClassEntity.Course.Code
+            },
+            Teacher = createdClassEntity.Teacher != null
+                ? new Teacher
                 {
-                    Id = o.Id,
-                    DayId = o.DayId,
-                    StartPeriodId = o.StartPeriodId,
-                    Length = o.Length
-                }).ToList()
-            };
-
-            return Ok(classDto);
-        }
-
-        [HttpPost("class")] // POST /kawsay/class
-        public async Task<ActionResult<Class>> CreateClass([FromBody] CreateClassRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-            if (request.Occurrences == null || request.Occurrences.Count == 0)
-            {
-                 return BadRequest(new { message = "At least one occurrence is required." });
-            }
-             if (request.Occurrences.Any(o => o.Length <= 0))
-             {
-                  return BadRequest(new { message = "Occurrence length must be positive." });
-             }
-
-            // Validate existence of related entities
-            var course = await _context.Courses.FindAsync(request.CourseId);
-            if (course == null)
-            {
-                return BadRequest(new { message = $"Course with ID {request.CourseId} not found." });
-            }
-
-            TeacherEntity? teacher = null;
-            if (request.TeacherId.HasValue)
-            {
-                teacher = await _context.Teachers.FindAsync(request.TeacherId.Value);
-                if (teacher == null)
-                {
-                    return BadRequest(new { message = $"Teacher with ID {request.TeacherId.Value} not found." });
+                    Id = createdClassEntity.Teacher.Id, Name = createdClassEntity.Teacher.Name,
+                    Type = createdClassEntity.Teacher.Type
                 }
-            }
-
-             var timetable = await _context.Timetables
-                                           .Include(t => t.Days) // Include days/periods for validation
-                                           .Include(t => t.Periods)
-                                           .Where(t => t.Id == request.TimetableId)
-                                           .FirstOrDefaultAsync();
-             if (timetable == null)
-             {
-                 return BadRequest(new { message = $"Timetable with ID {request.TimetableId} not found." });
-             }
-
-             // Validate occurrence details against the timetable structure
-             foreach(var occ in request.Occurrences)
-             {
-                 if (!timetable.Days.Any(d => d.Id == occ.DayId))
-                 {
-                     return BadRequest(new { message = $"Day ID {occ.DayId} not found in timetable {request.TimetableId}." });
-                 }
-                  if (!timetable.Periods.Any(p => p.Id == occ.StartPeriodId))
-                 {
-                     return BadRequest(new { message = $"Period ID {occ.StartPeriodId} not found in timetable {request.TimetableId}." });
-                 }
-                 var startPeriodIndex = timetable.Periods.OrderBy(p => p.Start).ToList().FindIndex(p => p.Id == occ.StartPeriodId); // Ensure periods are ordered for length check
-                 if (startPeriodIndex != -1 && startPeriodIndex + occ.Length > timetable.Periods.Count)
-                 {
-                      return BadRequest(new { message = $"Occurrence length {occ.Length} for period ID {occ.StartPeriodId} exceeds available periods in timetable {request.TimetableId}." });
-                 }
-                 // TODO: Add validation for scheduling conflicts! (Requires querying existing classes in the timetable)
-             }
+                : null,
+            Occurrences = createdClassEntity.Occurrences.Select(o => new ClassOccurrence
+                { Id = o.Id, DayId = o.DayId, StartPeriodId = o.StartPeriodId, Length = o.Length }).ToList()
+        };
 
 
-            // Map request DTO to Entity
-            var classEntity = new ClassEntity
-            {
-                TimetableId = request.TimetableId,
-                CourseId = request.CourseId, // Use foreign key ID
-                TeacherId = request.TeacherId, // Use foreign key ID (nullable)
-                Occurrences = request.Occurrences.Select(o => new ClassOccurrenceEntity
-                {
-                    DayId = o.DayId,
-                    StartPeriodId = o.StartPeriodId,
-                    Length = o.Length
-                }).ToList() // IDs will be generated by DB
-            };
-
-            // Add to context and save
-            _context.Classes.Add(classEntity);
-            await _context.SaveChangesAsync(); // Saves Class and Occurrences
-
-            // Re-fetch the created entity with navigation properties to return the full DTO
-            var createdClassEntity = await _context.Classes
-                                                   .Include(c => c.Course)
-                                                   .Include(c => c.Teacher)
-                                                   .Include(c => c.Occurrences)
-                                                   .Where(c => c.Id == classEntity.Id)
-                                                   .FirstOrDefaultAsync();
-
-            // Map created Entity back to DTO for response
-             var createdClassDto = new Class
-            {
-                Id = createdClassEntity!.Id, // Use the ID generated by the DB
-                TimetableId = createdClassEntity.TimetableId,
-                Course = new Course { Id = createdClassEntity.Course.Id, Name = createdClassEntity.Course.Name, Code = createdClassEntity.Course.Code },
-                Teacher = createdClassEntity.Teacher != null ? new Teacher { Id = createdClassEntity.Teacher.Id, Name = createdClassEntity.Teacher.Name, Type = createdClassEntity.Teacher.Type } : null,
-                Occurrences = createdClassEntity.Occurrences.Select(o => new ClassOccurrence { Id = o.Id, DayId = o.DayId, StartPeriodId = o.StartPeriodId, Length = o.Length }).ToList()
-            };
+        return CreatedAtAction(nameof(GetClass), new { id = createdClassDto.Id }, createdClassDto);
+    }
 
 
-            return CreatedAtAction(nameof(GetClass), new { id = createdClassDto.Id }, createdClassDto);
+    [HttpPut("class/{id}")]
+    public async Task<ActionResult<Class>> UpdateClass(int id, [FromBody] UpdateClassRequest request)
+    {
+        if (id != request.Id) return BadRequest(new { message = "ID in URL and body must match." });
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (request.Occurrences == null || request.Occurrences.Count == 0)
+            return BadRequest(new { message = "At least one occurrence is required." });
+        if (request.Occurrences.Any(o => o.Length <= 0))
+            return BadRequest(new { message = "Occurrence length must be positive." });
+
+
+        var existingClass = await _context.Classes
+            .Include(c => c.Course)
+            .Include(c => c.Teacher)
+            .Include(c => c.Occurrences)
+            .Where(c => c.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (existingClass == null) return NotFound();
+
+
+        if (existingClass.TimetableId != request.TimetableId)
+            return BadRequest(new
+                { message = $"Cannot change timetableId ({request.TimetableId}) for existing class ID {id}." });
+
+
+        var course = await _context.Courses.FindAsync(request.CourseId);
+        if (course == null)
+            return BadRequest(new { message = $"Course with ID {request.CourseId} not found during update." });
+
+        TeacherEntity? teacher = null;
+        if (request.TeacherId.HasValue)
+        {
+            teacher = await _context.Teachers.FindAsync(request.TeacherId.Value);
+            if (teacher == null)
+                return BadRequest(new
+                    { message = $"Teacher with ID {request.TeacherId.Value} not found during update." });
         }
 
-        // Added for API completeness, not used by current frontend
-        [HttpPut("class/{id}")] // PUT /kawsay/class/{id}
-        public async Task<ActionResult<Class>> UpdateClass(int id, [FromBody] UpdateClassRequest request)
+
+        var timetable = await _context.Timetables
+            .Include(t => t.Days)
+            .Include(t => t.Periods)
+            .Where(t => t.Id == request.TimetableId)
+            .FirstOrDefaultAsync();
+        if (timetable == null)
+            return BadRequest(new { message = $"Timetable with ID {request.TimetableId} not found." });
+
+
+        foreach (var occ in request.Occurrences)
         {
-            if (id != request.Id)
-            {
-                return BadRequest(new { message = "ID in URL and body must match." });
-            }
-             if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-             if (request.Occurrences == null || request.Occurrences.Count == 0)
-            {
-                 return BadRequest(new { message = "At least one occurrence is required." });
-            }
-             if (request.Occurrences.Any(o => o.Length <= 0))
-             {
-                  return BadRequest(new { message = "Occurrence length must be positive." });
-             }
-
-            // Fetch the existing class including related data needed for update and validation
-            var existingClass = await _context.Classes
-                                              .Include(c => c.Course)
-                                              .Include(c => c.Teacher)
-                                              .Include(c => c.Occurrences) // Include existing occurrences
-                                              .Where(c => c.Id == id)
-                                              .FirstOrDefaultAsync();
-
-            if (existingClass == null)
-            {
-                return NotFound();
-            }
-
-             // Validate timetableId matches the existing one
-             if (existingClass.TimetableId != request.TimetableId)
-             {
-                 return BadRequest(new { message = $"Cannot change timetableId ({request.TimetableId}) for existing class ID {id}." });
-             }
-
-             // Validate existence of related entities (Course, Teacher)
-             var course = await _context.Courses.FindAsync(request.CourseId);
-             if (course == null)
-             {
-                 return BadRequest(new { message = $"Course with ID {request.CourseId} not found during update." });
-             }
-
-             TeacherEntity? teacher = null;
-             if (request.TeacherId.HasValue)
-             {
-                 teacher = await _context.Teachers.FindAsync(request.TeacherId.Value);
-                 if (teacher == null)
-                 {
-                     return BadRequest(new { message = $"Teacher with ID {request.TeacherId.Value} not found during update." });
-                 }
-             }
-
-             // Fetch timetable structure for occurrence validation
-             var timetable = await _context.Timetables
-                                           .Include(t => t.Days)
-                                           .Include(t => t.Periods)
-                                           .Where(t => t.Id == request.TimetableId)
-                                           .FirstOrDefaultAsync();
-             if (timetable == null) // Should not happen if existingClass is found, but defensive
-             {
-                 return BadRequest(new { message = $"Timetable with ID {request.TimetableId} not found." });
-             }
-
-             // Validate new/updated occurrence details against the timetable structure
-             foreach(var occ in request.Occurrences)
-             {
-                 if (!timetable.Days.Any(d => d.Id == occ.DayId))
-                 {
-                     return BadRequest(new { message = $"Day ID {occ.DayId} not found in timetable {request.TimetableId}." });
-                 }
-                  if (!timetable.Periods.Any(p => p.Id == occ.StartPeriodId))
-                 {
-                     return BadRequest(new { message = $"Period ID {occ.StartPeriodId} not found in timetable {request.TimetableId}." });
-                 }
-                 var startPeriodIndex = timetable.Periods.OrderBy(p => p.Start).ToList().FindIndex(p => p.Id == occ.StartPeriodId);
-                 if (startPeriodIndex != -1 && startPeriodIndex + occ.Length > timetable.Periods.Count)
-                 {
-                      return BadRequest(new { message = $"Occurrence length {occ.Length} for period ID {occ.StartPeriodId} exceeds available periods in timetable {request.TimetableId}." });
-                 }
-                 // TODO: Add validation for scheduling conflicts! (Excluding the occurrence being updated)
-             }
-
-
-            // Apply updates to the existing entity
-            existingClass.CourseId = request.CourseId; // Update foreign key
-            existingClass.TeacherId = request.TeacherId; // Update foreign key (nullable)
-
-            // Update nested occurrences: compare existing with requested
-            // This is a common pattern for replacing/updating nested collections in EF Core
-            var existingOccurrences = existingClass.Occurrences.ToList(); // Make a copy to modify the original collection
-            var requestedOccurrences = request.Occurrences.ToList();
-
-            // Remove occurrences that are in existing but not in requested
-            foreach (var existingOcc in existingOccurrences)
-            {
-                if (!requestedOccurrences.Any(reqOcc => reqOcc.Id == existingOcc.Id && reqOcc.Id != 0)) // Check by ID for existing ones
+            if (!timetable.Days.Any(d => d.Id == occ.DayId))
+                return BadRequest(new
+                    { message = $"Day ID {occ.DayId} not found in timetable {request.TimetableId}." });
+            if (!timetable.Periods.Any(p => p.Id == occ.StartPeriodId))
+                return BadRequest(new
+                    { message = $"Period ID {occ.StartPeriodId} not found in timetable {request.TimetableId}." });
+            var startPeriodIndex = timetable.Periods.OrderBy(p => p.Start).ToList()
+                .FindIndex(p => p.Id == occ.StartPeriodId);
+            if (startPeriodIndex != -1 && startPeriodIndex + occ.Length > timetable.Periods.Count)
+                return BadRequest(new
                 {
-                    _context.ClassOccurrences.Remove(existingOcc);
-                }
-            }
+                    message =
+                        $"Occurrence length {occ.Length} for period ID {occ.StartPeriodId} exceeds available periods in timetable {request.TimetableId}."
+                });
+        }
 
-            // Add or Update occurrences from requested
-            foreach (var requestedOcc in requestedOccurrences)
+
+        existingClass.CourseId = request.CourseId;
+        existingClass.TeacherId = request.TeacherId;
+
+
+        var existingOccurrences = existingClass.Occurrences.ToList();
+        var requestedOccurrences = request.Occurrences.ToList();
+
+
+        foreach (var existingOcc in existingOccurrences)
+            if (!requestedOccurrences.Any(reqOcc => reqOcc.Id == existingOcc.Id && reqOcc.Id != 0))
+                _context.ClassOccurrences.Remove(existingOcc);
+
+
+        foreach (var requestedOcc in requestedOccurrences)
+            if (requestedOcc.Id == 0)
             {
-                if (requestedOcc.Id == 0) // ID == 0 typically means new entity
+                existingClass.Occurrences.Add(new ClassOccurrenceEntity
                 {
-                    // Add new occurrence
-                     existingClass.Occurrences.Add(new ClassOccurrenceEntity {
-                         DayId = requestedOcc.DayId,
-                         StartPeriodId = requestedOcc.StartPeriodId,
-                         Length = requestedOcc.Length
-                         // ClassId is set automatically by EF Core when added to the collection
-                     });
+                    DayId = requestedOcc.DayId,
+                    StartPeriodId = requestedOcc.StartPeriodId,
+                    Length = requestedOcc.Length
+                });
+            }
+            else
+            {
+                var existingOcc = existingOccurrences.FirstOrDefault(eo => eo.Id == requestedOcc.Id);
+                if (existingOcc != null)
+                {
+                    existingOcc.DayId = requestedOcc.DayId;
+                    existingOcc.StartPeriodId = requestedOcc.StartPeriodId;
+                    existingOcc.Length = requestedOcc.Length;
+                    _context.ClassOccurrences.Update(existingOcc);
                 }
                 else
                 {
-                    // Find existing occurrence to update
-                    var existingOcc = existingOccurrences.FirstOrDefault(eo => eo.Id == requestedOcc.Id);
-                    if (existingOcc != null)
-                    {
-                        // Update properties
-                        existingOcc.DayId = requestedOcc.DayId;
-                        existingOcc.StartPeriodId = requestedOcc.StartPeriodId;
-                        existingOcc.Length = requestedOcc.Length;
-                        _context.ClassOccurrences.Update(existingOcc); // Mark as modified
-                    }
-                    else
-                    {
-                         // This case means an ID was provided in the request body, but it didn't exist for this class
-                         // Depending on requirements, you might return BadRequest or ignore/add it.
-                         // For this mockup, let's return BadRequest.
-                         return BadRequest(new { message = $"Occurrence with ID {requestedOcc.Id} not found for class {id}." });
-                    }
+                    return BadRequest(new
+                        { message = $"Occurrence with ID {requestedOcc.Id} not found for class {id}." });
                 }
             }
 
 
-            await _context.SaveChangesAsync(); // Saves all changes (removals, additions, updates)
-
-            // Re-fetch the updated entity with navigation properties to return the full DTO
-            var updatedClassEntity = await _context.Classes
-                                                   .Include(c => c.Course)
-                                                   .Include(c => c.Teacher)
-                                                   .Include(c => c.Occurrences)
-                                                   .Where(c => c.Id == id)
-                                                   .FirstOrDefaultAsync();
-
-            // Map updated Entity back to DTO for response
-             var updatedClassDto = new Class
-            {
-                Id = updatedClassEntity!.Id,
-                TimetableId = updatedClassEntity.TimetableId,
-                Course = new Course { Id = updatedClassEntity.Course.Id, Name = updatedClassEntity.Course.Name, Code = updatedClassEntity.Course.Code },
-                Teacher = updatedClassEntity.Teacher != null ? new Teacher { Id = updatedClassEntity.Teacher.Id, Name = updatedClassEntity.Teacher.Name, Type = updatedClassEntity.Teacher.Type } : null,
-                Occurrences = updatedClassEntity.Occurrences.Select(o => new ClassOccurrence { Id = o.Id, DayId = o.DayId, StartPeriodId = o.StartPeriodId, Length = o.Length }).ToList()
-            };
+        await _context.SaveChangesAsync();
 
 
-            return Ok(updatedClassDto);
-        }
+        var updatedClassEntity = await _context.Classes
+            .Include(c => c.Course)
+            .Include(c => c.Teacher)
+            .Include(c => c.Occurrences)
+            .Where(c => c.Id == id)
+            .FirstOrDefaultAsync();
 
-        // Added for API completeness, not used by current frontend
-        [HttpDelete("class/{id}")] // DELETE /kawsay/class/{id}
-        public async Task<IActionResult> DeleteClass(int id)
+
+        var updatedClassDto = new Class
         {
-            var cls = await _context.Classes.FindAsync(id); // Find by primary key
-            if (cls == null)
+            Id = updatedClassEntity!.Id,
+            TimetableId = updatedClassEntity.TimetableId,
+            Course = new Course
             {
-                return NotFound();
-            }
+                Id = updatedClassEntity.Course.Id, Name = updatedClassEntity.Course.Name,
+                Code = updatedClassEntity.Course.Code
+            },
+            Teacher = updatedClassEntity.Teacher != null
+                ? new Teacher
+                {
+                    Id = updatedClassEntity.Teacher.Id, Name = updatedClassEntity.Teacher.Name,
+                    Type = updatedClassEntity.Teacher.Type
+                }
+                : null,
+            Occurrences = updatedClassEntity.Occurrences.Select(o => new ClassOccurrence
+                { Id = o.Id, DayId = o.DayId, StartPeriodId = o.StartPeriodId, Length = o.Length }).ToList()
+        };
 
-            _context.Classes.Remove(cls);
-            await _context.SaveChangesAsync(); // Cascade delete occurrences handled by OnModelCreating
 
-            return NoContent(); // 204 No Content
-        }
+        return Ok(updatedClassDto);
+    }
+
+
+    [HttpDelete("class/{id}")]
+    public async Task<IActionResult> DeleteClass(int id)
+    {
+        var cls = await _context.Classes.FindAsync(id);
+        if (cls == null) return NotFound();
+
+        _context.Classes.Remove(cls);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
     }
 }

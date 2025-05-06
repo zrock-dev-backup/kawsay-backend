@@ -1,65 +1,47 @@
-// Scheduling/SchedulingMatrix.cs
-
 using System.Text;
 
-namespace KawsayApiMockup.Scheduling // Ensure correct namespace for your project
+namespace KawsayApiMockup.Scheduling;
+
+public class SchedulingMatrix
 {
-    // Represents a matrix (grid) for tracking availability or constraints over days and periods.
-    public class SchedulingMatrix
+    private readonly int[,] _matrix;
+
+
+    public SchedulingMatrix(int rows, int columns)
     {
-        public int Rows { get; } // Number of days
-        public int Columns { get; } // Number of periods
-        private readonly int[,] _matrix;
+        Rows = rows;
+        Columns = columns;
+        _matrix = new int[Rows, Columns];
+    }
 
-        // Constructor takes dimensions based on the timetable
-        public SchedulingMatrix(int rows, int columns)
+    public int Rows { get; }
+    public int Columns { get; }
+
+
+    public int Get(int row, int column)
+    {
+        if (row < 0 || row >= Rows || column < 0 || column >= Columns) return 1;
+        return _matrix[row, column];
+    }
+
+
+    public void Set(int row, int column, int value)
+    {
+        if (row < 0 || row >= Rows || column < 0 || column >= Columns) return;
+        _matrix[row, column] = value;
+    }
+
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+        for (var i = 0; i < Rows; i++)
         {
-            Rows = rows;
-            Columns = columns;
-            _matrix = new int[Rows, Columns];
-            // Matrix is initialized to all 0s (available) by default in C# for int arrays
+            for (var j = 0; j < Columns; j++) sb.Append(_matrix[i, j] + (j == Columns - 1 ? "" : " "));
+
+            sb.AppendLine();
         }
 
-        // Get the value at a specific day and period index (0-based)
-        public int Get(int row, int column)
-        {
-            // Defensive check for out-of-bounds access
-            if (row < 0 || row >= Rows || column < 0 || column >= Columns)
-            {
-                // If access is out of bounds, treat it as unavailable (1)
-                // This prevents errors if the algorithm tries to check beyond the grid boundaries.
-                // System.Console.WriteLine($"Warning: Attempted to Get matrix out of bounds [{row},{column}]. Matrix size: [{Rows},{Columns}]. Returning 1 (unavailable)."); // Optional logging
-                return 1; // Return 1 to indicate unavailability outside valid bounds
-            }
-            return _matrix[row, column];
-        }
-
-        // Set the value at a specific day and period index (0-based)
-        public void Set(int row, int column, int value)
-        {
-             // Defensive check for out-of-bounds access
-             if (row < 0 || row >= Rows || column < 0 || column >= Columns)
-            {
-                // System.Console.WriteLine($"Warning: Attempted to Set matrix out of bounds [{row},{column}]. Matrix size: [{Rows},{Columns}]. Ignoring set operation."); // Optional logging
-                 return; // Ignore set operations outside valid bounds
-            }
-            _matrix[row, column] = value;
-        }
-
-        // Optional: Override ToString for debugging
-        public override string ToString()
-        {
-            var sb = new StringBuilder();
-            for (int i = 0; i < Rows; i++)
-            {
-                for (int j = 0; j < Columns; j++)
-                {
-                    sb.Append(_matrix[i, j] + (j == Columns - 1 ? "" : " "));
-                }
-
-                sb.AppendLine();
-            }
-            return sb.ToString();
-        }
+        return sb.ToString();
     }
 }

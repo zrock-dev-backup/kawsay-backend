@@ -210,3 +210,4 @@ MigrationBackup/
 mono_crash.*
 files
 Migrations
+*.out
