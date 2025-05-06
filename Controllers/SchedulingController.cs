@@ -1,7 +1,7 @@
-using KawsayApiMockup.Services;
+using kawsay.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace KawsayApiMockup.Controllers;
+namespace kawsay.Controllers;
 
 [ApiController]
 [Route("kawsay/[controller]")]

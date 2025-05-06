@@ -1,4 +1,4 @@
-using KawsayApiMockup.Data;
+using kawsay.Data;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

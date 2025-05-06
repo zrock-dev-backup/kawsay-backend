@@ -1,11 +1,11 @@
 using System.Globalization;
-using KawsayApiMockup.Data;
-using KawsayApiMockup.Entities;
-using KawsayApiMockup.Scheduling;
+using kawsay.Data;
+using kawsay.Entities;
+using kawsay.Scheduling;
 using Microsoft.EntityFrameworkCore;
 using static System.TimeSpan;
 
-namespace KawsayApiMockup.Services;
+namespace kawsay.Services;
 
 public class SchedulingService
 {

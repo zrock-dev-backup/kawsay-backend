@@ -1,10 +1,10 @@
-using KawsayApiMockup.Data;
-using KawsayApiMockup.DTOs;
-using KawsayApiMockup.Entities;
+using kawsay.Data;
+using kawsay.DTOs;
+using kawsay.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace KawsayApiMockup.Controllers;
+namespace kawsay.Controllers;
 
 [ApiController]
 [Route("kawsay")]

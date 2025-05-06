@@ -1,4 +1,4 @@
-namespace KawsayApiMockup.Scheduling;
+namespace kawsay.Scheduling;
 
 public class ScheduledTimeslotResult
 {

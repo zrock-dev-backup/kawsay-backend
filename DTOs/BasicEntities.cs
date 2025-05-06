@@ -1,4 +1,4 @@
-namespace KawsayApiMockup.DTOs;
+namespace kawsay.DTOs;
 
 public class Course
 {

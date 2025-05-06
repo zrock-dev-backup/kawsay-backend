@@ -1,7 +1,7 @@
-using KawsayApiMockup.Entities;
+using kawsay.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace KawsayApiMockup.Data;
+namespace kawsay.Data;
 
 public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbContext(options)
 {

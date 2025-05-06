@@ -1,7 +1,7 @@
-using KawsayApiMockup.Entities;
-using KawsayApiMockup.Services;
+using kawsay.Entities;
+using kawsay.Services;
 
-namespace KawsayApiMockup.Scheduling;
+namespace kawsay.Scheduling;
 
 public static class SchedulingDocumentFactory
 {

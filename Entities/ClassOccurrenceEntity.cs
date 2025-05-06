@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace KawsayApiMockup.Entities;
+namespace kawsay.Entities;
 
 public class ClassOccurrenceEntity
 {

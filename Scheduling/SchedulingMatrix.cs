@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace KawsayApiMockup.Scheduling;
+namespace kawsay.Scheduling;
 
 public class SchedulingMatrix
 {
