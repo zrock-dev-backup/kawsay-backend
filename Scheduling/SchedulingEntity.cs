@@ -1,18 +1,11 @@
 namespace kawsay.Scheduling;
 
-public class SchedulingEntity
+public class SchedulingEntity(int id, string name, int numDays, int numPeriods)
 {
-    public readonly int Id;
-    public readonly string Name;
-    public SchedulingMatrix jC;
+    public readonly int Id = id;
+    public readonly string Name = name;
+    public SchedulingMatrix AvailabilityMatrix = new(numDays, numPeriods);
 
-
-    public SchedulingEntity(int id, string name, int numDays, int numPeriods)
-    {
-        Id = id;
-        Name = name;
-        jC = new SchedulingMatrix(numDays, numPeriods);
-    }
 
     public override string ToString()
     {

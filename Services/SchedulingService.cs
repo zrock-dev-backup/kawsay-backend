@@ -7,15 +7,9 @@ using static System.TimeSpan;
 
 namespace kawsay.Services;
 
-public class SchedulingService
+public class SchedulingService(KawsayDbContext context)
 {
     public const int ClassEntityIdOffset = 10000;
-    private readonly KawsayDbContext _context;
-
-    public SchedulingService(KawsayDbContext context)
-    {
-        _context = context;
-    }
 
 
     public async Task<bool> GenerateScheduleAsync(int timetableId)
@@ -23,7 +17,7 @@ public class SchedulingService
         Console.WriteLine($"Starting schedule generation for timetable ID: {timetableId}");
 
 
-        var timetable = await _context.Timetables
+        var timetable = await context.Timetables
             .Include(t => t.Days)
             .Include(t => t.Periods)
             .FirstOrDefaultAsync(t => t.Id == timetableId);
@@ -31,7 +25,7 @@ public class SchedulingService
         if (timetable == null) throw new ArgumentException($"Timetable with ID {timetableId} not found.");
 
 
-        var classesToSchedule = await _context.Classes
+        var classesToSchedule = await context.Classes
             .Include(c => c.Course)
             .Include(c => c.Teacher)
             .Where(c => c.TimetableId == timetableId)
@@ -39,7 +33,7 @@ public class SchedulingService
             .ToListAsync();
 
 
-        var allTeachers = await _context.Teachers.ToListAsync();
+        var allTeachers = await context.Teachers.ToListAsync();
 
 
         var allSchedulingEntities = new List<SchedulingEntity>();
@@ -54,7 +48,7 @@ public class SchedulingService
         var initializeJcMatrices = () =>
         {
             foreach (var entity in allSchedulingEntities)
-                entity.jC = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
+                entity.AvailabilityMatrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
         };
 
 
@@ -70,11 +64,11 @@ public class SchedulingService
             Console.WriteLine(
                 "No requirements generated for scheduling. Clearing existing schedule for this timetable.");
 
-            var existingOccurrencesA = await _context.ClassOccurrences
-                .Where(o => _context.Classes.Any(c => c.Id == o.ClassId && c.TimetableId == timetableId))
+            var existingOccurrencesA = await context.ClassOccurrences
+                .Where(o => context.Classes.Any(c => c.Id == o.ClassId && c.TimetableId == timetableId))
                 .ToListAsync();
-            _context.ClassOccurrences.RemoveRange(existingOccurrencesA);
-            await _context.SaveChangesAsync();
+            context.ClassOccurrences.RemoveRange(existingOccurrencesA);
+            await context.SaveChangesAsync();
             return true;
         }
 
@@ -102,7 +96,7 @@ public class SchedulingService
                     timetable.Periods.Count))
             {
                 Console.WriteLine(
-                    $"Scheduling failed for requirement S=[{string.Join(",", currentReq.S)}] (q={currentReq.q}, len={currentReq.length}) after {attempts + 1} attempts. Moving to front and backtracking.");
+                    $"Scheduling failed for requirement S=[{string.Join(",", currentReq.EntitiesList)}] (q={currentReq.Frequency}, len={currentReq.Length}) after {attempts + 1} attempts. Moving to front and backtracking.");
 
 
                 currentDocument.Remove(currentReq);
@@ -120,7 +114,7 @@ public class SchedulingService
             else
             {
                 Console.WriteLine(
-                    $"Successfully scheduled requirement for S=[{string.Join(",", currentReq.S)}]. Results: {currentReq.R.R.Count} occurrences scheduled.");
+                    $"Successfully scheduled requirement for S=[{string.Join(",", currentReq.EntitiesList)}]. Results: {currentReq.AssignedTimeslotList.TimeslotDict.Count} occurrences scheduled.");
             }
         }
 
@@ -136,16 +130,16 @@ public class SchedulingService
 
 
         var classIdsToSchedule = classesToSchedule.Select(c => c.Id).ToList();
-        var existingOccurrences = await _context.ClassOccurrences
+        var existingOccurrences = await context.ClassOccurrences
             .Where(o => classIdsToSchedule.Contains(o.ClassId))
             .ToListAsync();
-        _context.ClassOccurrences.RemoveRange(existingOccurrences);
+        context.ClassOccurrences.RemoveRange(existingOccurrences);
 
 
         var newOccurrences = new List<ClassOccurrenceEntity>();
 
 
-        var sortedDays = timetable.Days.OrderBy(d => SchedulingAlgorithm.dayOrder.IndexOf(d.Name)).ToList();
+        var sortedDays = timetable.Days.OrderBy(d => SchedulingAlgorithm.DayOrder.IndexOf(d.Name)).ToList();
 
         var sortedPeriods = timetable.Periods.OrderBy(p => ParseExact(p.Start, "HH\\:mm", CultureInfo.InvariantCulture))
             .ToList();
@@ -153,18 +147,18 @@ public class SchedulingService
 
         foreach (var requirement in currentDocument)
         {
-            var classEntitySchedulingId = requirement.S.FirstOrDefault(id => id >= ClassEntityIdOffset);
+            var classEntitySchedulingId = requirement.EntitiesList.FirstOrDefault(id => id >= ClassEntityIdOffset);
             if (classEntitySchedulingId == 0)
             {
                 Console.WriteLine(
-                    $"Warning: Could not find Class Entity ID in S list (using offset {ClassEntityIdOffset}) for requirement S=[{string.Join(",", requirement.S)}]. Skipping occurrence creation for this requirement.");
+                    $"Warning: Could not find Class Entity ID in S list (using offset {ClassEntityIdOffset}) for requirement S=[{string.Join(",", requirement.EntitiesList)}]. Skipping occurrence creation for this requirement.");
                 continue;
             }
 
             var classEntityId = classEntitySchedulingId - ClassEntityIdOffset;
 
 
-            foreach (var resultPair in requirement.R.R.Values)
+            foreach (var resultPair in requirement.AssignedTimeslotList.TimeslotDict.Values)
             {
                 var dayIndex = resultPair[0];
                 var periodIndex = resultPair[1];
@@ -187,16 +181,16 @@ public class SchedulingService
                     ClassId = classEntityId,
                     DayId = dayEntity.Id,
                     StartPeriodId = startPeriodEntity.Id,
-                    Length = requirement.length
+                    Length = requirement.Length
                 });
             }
 
-            Console.WriteLine($"Created {requirement.R.R.Count} new occurrences for Class Entity ID {classEntityId}.");
+            Console.WriteLine($"Created {requirement.AssignedTimeslotList.TimeslotDict.Count} new occurrences for Class Entity ID {classEntityId}.");
         }
 
 
-        _context.ClassOccurrences.AddRange(newOccurrences);
-        await _context.SaveChangesAsync();
+        context.ClassOccurrences.AddRange(newOccurrences);
+        await context.SaveChangesAsync();
 
         Console.WriteLine(
             $"Finished schedule generation for timetable ID: {timetableId}. Overall success: {attempts < maxAttempts}");

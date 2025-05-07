@@ -5,7 +5,8 @@ namespace kawsay.Scheduling;
 public class SchedulingMatrix
 {
     private readonly int[,] _matrix;
-
+    public int Rows { get; }
+    public int Columns { get; }
 
     public SchedulingMatrix(int rows, int columns)
     {
@@ -13,10 +14,6 @@ public class SchedulingMatrix
         Columns = columns;
         _matrix = new int[Rows, Columns];
     }
-
-    public int Rows { get; }
-    public int Columns { get; }
-
 
     public int Get(int row, int column)
     {
@@ -35,9 +32,12 @@ public class SchedulingMatrix
     public override string ToString()
     {
         var sb = new StringBuilder();
-        for (var i = 0; i < Rows; i++)
+        for (int i = 0; i < Rows; i++)
         {
-            for (var j = 0; j < Columns; j++) sb.Append(_matrix[i, j] + (j == Columns - 1 ? "" : " "));
+            for (int j = 0; j < Columns; j++)
+            {
+                sb.Append(_matrix[i, j] + " ");
+            }
 
             sb.AppendLine();
         }

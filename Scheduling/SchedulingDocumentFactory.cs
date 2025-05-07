@@ -12,31 +12,24 @@ public static class SchedulingDocumentFactory
     )
     {
         var document = new LinkedList<SchedulingRequirementLine>();
-
-
         foreach (var classEntity in classesToSchedule)
         {
-            var requiredOccurrenceCount = classEntity.RequiredOccurrenceCount;
-            var occurrenceLength = classEntity.OccurrenceLength;
-
-
-            var sEntityIdsForClass = new List<int>();
+            var frequency = classEntity.RequiredOccurrenceCount;
+            var length = classEntity.OccurrenceLength;
+            var entityIdsList = new List<int>();
 
             if (classEntity.TeacherId.HasValue)
             {
-                if (allSchedulingEntities.Any(se => se.Id == classEntity.TeacherId.Value))
-                    sEntityIdsForClass.Add(classEntity.TeacherId.Value);
+                if (allSchedulingEntities.Any(entity => entity.Id == classEntity.TeacherId.Value))
+                    entityIdsList.Add(classEntity.TeacherId.Value);
                 else
                     Console.WriteLine(
                         $"Warning: Teacher ID {classEntity.TeacherId.Value} for Class {classEntity.Id} not found in global SchedulingEntities list. Skipping teacher for S list for this requirement.");
             }
-
-
             var classSchedulingEntityId = classEntity.Id + SchedulingService.ClassEntityIdOffset;
-
-            if (allSchedulingEntities.Any(se => se.Id == classSchedulingEntityId))
+            if (allSchedulingEntities.Any(entity => entity.Id == classSchedulingEntityId))
             {
-                sEntityIdsForClass.Add(classSchedulingEntityId);
+                entityIdsList.Add(classSchedulingEntityId);
             }
             else
             {
@@ -46,14 +39,12 @@ public static class SchedulingDocumentFactory
             }
 
 
-            var sList = sEntityIdsForClass.ToList();
-
-
-            if (requiredOccurrenceCount > 0 && occurrenceLength > 0 && sList.Count > 0)
+            var sList = entityIdsList.ToList();
+            if (frequency > 0 && length > 0 && sList.Count > 0)
             {
-                var requirement = new GenericSchedulingRequirementLine(
-                    requiredOccurrenceCount,
-                    occurrenceLength,
+                var requirement = new SchedulingRequirementLine(
+                    frequency,
+                    length,
                     sList,
                     timetable.Days.Count,
                     timetable.Periods.Count
@@ -63,12 +54,10 @@ public static class SchedulingDocumentFactory
             else
             {
                 Console.WriteLine(
-                    $"Warning: Skipping requirement creation for Class {classEntity.Id} ({classEntity.Course?.Name ?? "Unknown Course"})" +
-                    $" due to zero required occurrences ({requiredOccurrenceCount})/length ({occurrenceLength}) or no involved entities (S list count: {sList.Count}).");
+                    $"Warning: Skipping requirement creation for Class {classEntity.Id} ({classEntity.Course.Name})" +
+                    $" due to zero required occurrences ({frequency})/length ({length}) or no involved entities (S list count: {sList.Count}).");
             }
         }
-
-
         return document;
     }
 }

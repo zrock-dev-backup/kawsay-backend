@@ -2,113 +2,84 @@ namespace kawsay.Scheduling;
 
 public static class SchedulingAlgorithm
 {
-    public static readonly List<string> dayOrder = new()
-        { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+    public static readonly List<string> DayOrder =
+        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 
-    public static bool Handler(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities, int numDays,
-        int numPeriods)
+    public static bool Handler(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities, int day,
+        int period)
     {
-        requirementLine.E = new SchedulingMatrix(numDays, numPeriods);
-
-
-        for (var i = 0; i < requirementLine.q; i++)
+        requirementLine.AvailabilityMatrix = new SchedulingMatrix(day, period);
+        for (var i = 0; i < requirementLine.Frequency; i++)
         {
-            PopulateEMatrix(requirementLine, entities, numDays, numPeriods);
+            PopulateLineAvailabilityMatrix(requirementLine, entities, day, period);
+            if (Schedule(requirementLine, entities, day, period)) continue;
+            Console.WriteLine(
+                $"Failed to schedule occurrence {i + 1}/{requirementLine.Frequency} for requirement S=[{string.Join(",", requirementLine.EntitiesList)}] (q={requirementLine.Frequency}, len={requirementLine.Length}).");
 
-
-            if (!Schedule(requirementLine, entities, numDays, numPeriods))
-            {
-                Console.WriteLine(
-                    $"Failed to schedule occurrence {i + 1}/{requirementLine.q} for requirement S=[{string.Join(",", requirementLine.S)}] (q={requirementLine.q}, len={requirementLine.length}).");
-
-                return false;
-            }
+            return false;
         }
-
-
         return true;
     }
 
 
-    private static void PopulateEMatrix(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities,
-        int numDays, int numPeriods)
+    private static void PopulateLineAvailabilityMatrix(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities,
+        int day, int period)
     {
-        var matrixE = requirementLine.E;
-
-
-        for (var dayIndex = 0; dayIndex < numDays; dayIndex++)
-        for (var periodIndex = 0; periodIndex < numPeriods; periodIndex++)
+        var lineAvailabilityMatrix = requirementLine.AvailabilityMatrix;
+        for (var dayIndex = 0; dayIndex < day; dayIndex++)
+        for (var periodIndex = 0; periodIndex < period; periodIndex++)
         {
-            var allRequiredEntitiesAvailable = requirementLine.S.All(requiredEntityId =>
+            // Tt filter has been removed
+            // verification of all entities availability first member of formula 1
+            var allRequiredEntitiesAvailable = requirementLine.EntitiesList.All(entityId =>
             {
-                var entity = entities.FirstOrDefault(e => e.Id == requiredEntityId);
-                if (entity == null)
-                {
-                    Console.WriteLine(
-                        $"Error: Required entity ID {requiredEntityId} not found in global entities list during E matrix population for requirement S=[{string.Join(",", requirementLine.S)}]. Treating slot [{dayIndex},{periodIndex}] as unavailable.");
-                    return false;
-                }
+                var entity = entities.FirstOrDefault(e => e.Id == entityId);
+                if (entity != null) return entity.AvailabilityMatrix.Get(dayIndex, periodIndex) == 0;
+                Console.WriteLine(
+                    $"Error: Required entity ID {entityId} not found in global entities list during E matrix population for requirement S=[{string.Join(",", requirementLine.EntitiesList)}]. Treating slot [{dayIndex},{periodIndex}] as unavailable.");
+                return false;
 
-                return entity.jC.Get(dayIndex, periodIndex) == 0;
             });
-
-
             if (!allRequiredEntitiesAvailable)
             {
-                matrixE.Set(dayIndex, periodIndex, 1);
+                lineAvailabilityMatrix.Set(dayIndex, periodIndex, 1);
                 continue;
             }
-
-
-            var constraint = periodIndex >= 0 && periodIndex < requirementLine.Z.Count
-                ? requirementLine.Z[periodIndex]
-                : 1;
-
-            if (constraint == 0)
-                matrixE.Set(dayIndex, periodIndex, 1);
-            else
-                matrixE.Set(dayIndex, periodIndex, 0);
+            
+            var constraint = requirementLine.PeriodPreferenceList[periodIndex];
+            lineAvailabilityMatrix.Set(dayIndex, periodIndex, constraint == 0 ? 0 : 1);
         }
     }
 
 
     private static bool Schedule(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities,
-        int numDays, int numPeriods)
+        int day, int period)
     {
-        var matrixE = requirementLine.E;
-
-
-        for (var dayIndex = 0; dayIndex < numDays; dayIndex++)
-        for (var periodIndex = 0; periodIndex < numPeriods; periodIndex++)
-            if (matrixE.Get(dayIndex, periodIndex) == 0)
-                if (ValidatePeriodAvailability(dayIndex, periodIndex, requirementLine, entities))
+        var availabilityMatrix = requirementLine.AvailabilityMatrix;
+        for (var dayIndex = 0; dayIndex < day; dayIndex++)
+        for (var periodIndex = 0; periodIndex < period; periodIndex++)
+            if (availabilityMatrix.Get(dayIndex, periodIndex) == 0)
+                if (ValidateLineRequirementAvailability(dayIndex, periodIndex, requirementLine, entities))
                 {
-                    UpdateEAvailability(dayIndex, periodIndex, requirementLine, entities);
-                    requirementLine.R.Add(dayIndex, periodIndex);
+                    UpdateEntitiesAvailability(dayIndex, periodIndex, requirementLine, entities);
+                    requirementLine.AssignedTimeslotList.Add(dayIndex, periodIndex);
                     return true;
                 }
-
         return false;
     }
 
 
-    private static bool ValidatePeriodAvailability(int dayIndex, int startPeriodIndex,
+    private static bool ValidateLineRequirementAvailability(int dayIndex, int startPeriodIndex,
         SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities)
     {
-        var numPeriods = requirementLine.E.Columns;
-
-
-        var actualPeriodsRemaining = numPeriods - startPeriodIndex;
-        if (actualPeriodsRemaining < requirementLine.length) return false;
-
-
-        for (var k = 0; k < requirementLine.length; k++)
+        var totalTimetablePeriodAmt = requirementLine.AvailabilityMatrix.Columns;
+        var remainingPeriods = totalTimetablePeriodAmt - startPeriodIndex;
+        if (remainingPeriods < requirementLine.Length) return false;
+        for (var k = 0; k < requirementLine.Length; k++)
         {
             var currentPeriodIndex = startPeriodIndex + k;
-
-
-            foreach (var entityId in requirementLine.S)
+            foreach (var entityId in requirementLine.EntitiesList)
             {
                 var entity = entities.FirstOrDefault(e => e.Id == entityId);
                 if (entity == null)
@@ -118,23 +89,20 @@ public static class SchedulingAlgorithm
                     return false;
                 }
 
-                if (entity.jC.Get(dayIndex, currentPeriodIndex) == 1) return false;
+                if (entity.AvailabilityMatrix.Get(dayIndex, currentPeriodIndex) == 1) return false;
             }
         }
-
         return true;
     }
 
 
-    private static void UpdateEAvailability(int dayIndex, int startPeriodIndex,
+    private static void UpdateEntitiesAvailability(int dayIndex, int startPeriodIndex,
         SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities)
     {
-        for (var k = 0; k < requirementLine.length; k++)
+        for (var k = 0; k < requirementLine.Length; k++)
         {
             var currentPeriodIndex = startPeriodIndex + k;
-
-
-            foreach (var entityId in requirementLine.S)
+            foreach (var entityId in requirementLine.EntitiesList)
             {
                 var entity = entities.FirstOrDefault(e => e.Id == entityId);
                 if (entity == null)
@@ -143,8 +111,7 @@ public static class SchedulingAlgorithm
                         $"Error: Required entity ID {entityId} not found in the global entities list during jC update.");
                     continue;
                 }
-
-                entity.jC.Set(dayIndex, currentPeriodIndex, 1);
+                entity.AvailabilityMatrix.Set(dayIndex, currentPeriodIndex, 1);
             }
         }
     }
