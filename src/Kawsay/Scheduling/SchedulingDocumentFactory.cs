@@ -7,10 +7,10 @@ public static class SchedulingDocumentFactory
 {
     private static void PopulatePeriodPreferences(ClassEntity classEntity, SchedulingRequirementLine requirementLine)
     {
-        foreach (var occurrence in classEntity.Occurrences)
+        foreach (var occurrence in classEntity.PeriodPreferences)
         {
             var start = occurrence.StartPeriodId;
-            SetRange(start, start + classEntity.OccurrenceLength);
+            SetRange(start, start + classEntity.Length);
         }
 
         return;
@@ -38,8 +38,8 @@ public static class SchedulingDocumentFactory
         var document = new LinkedList<SchedulingRequirementLine>();
         foreach (var classEntity in classesToSchedule)
         {
-            var frequency = classEntity.RequiredOccurrenceCount;
-            var length = classEntity.OccurrenceLength;
+            var frequency = classEntity.Frequency;
+            var length = classEntity.Length;
             var entityIdsList = new List<int>();
 
             if (classEntity.TeacherId.HasValue)

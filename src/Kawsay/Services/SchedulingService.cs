@@ -24,7 +24,7 @@ public class SchedulingService(KawsayDbContext context)
             .Include(c => c.Course)
             .Include(c => c.Teacher)
             .Where(c => c.TimetableId == timetableId)
-            .Where(c => c.RequiredOccurrenceCount > 0 && c.OccurrenceLength > 0)
+            .Where(c => c.Frequency > 0 && c.Length > 0)
             .ToListAsync();
 
         var allTeachers = await context.Teachers.ToListAsync();
@@ -32,7 +32,7 @@ public class SchedulingService(KawsayDbContext context)
         allSchedulingEntities.AddRange(allTeachers.Select(t =>
             new SchedulingEntity(t.Id, t.Name, timetable.Days.Count, timetable.Periods.Count)));
         allSchedulingEntities.AddRange(classesToSchedule.Select(c => new SchedulingEntity(c.Id + ClassEntityIdOffset,
-            $"Class {c.Id} ({c.Course?.Code ?? "N/A"})", timetable.Days.Count, timetable.Periods.Count)));
+            $"Class {c.Id} ({c.Course.Code})", timetable.Days.Count, timetable.Periods.Count)));
 
         var requirementDocument = SchedulingDocumentFactory.GetDocument(
             classesToSchedule,
@@ -92,7 +92,7 @@ public class SchedulingService(KawsayDbContext context)
             .ToListAsync();
         context.ClassOccurrences.RemoveRange(existingOccurrences);
 
-        var newOccurrences = new List<ClassOccurrenceEntity>();
+        var newOccurrences = new List<PeriodPreference>();
         var sortedDays = timetable.Days.OrderBy(d => SchedulingAlgorithm.DayOrder.IndexOf(d.Name)).ToList();
         var sortedPeriods = timetable.Periods.OrderBy(p => ParseExact(p.Start, "HH\\:mm", CultureInfo.InvariantCulture))
             .ToList();
@@ -121,12 +121,11 @@ public class SchedulingService(KawsayDbContext context)
 
                 var dayEntity = sortedDays[dayIndex];
                 var startPeriodEntity = sortedPeriods[periodIndex];
-                newOccurrences.Add(new ClassOccurrenceEntity
+                newOccurrences.Add(new PeriodPreference
                 {
                     ClassId = classEntityId,
                     DayId = dayEntity.Id,
-                    StartPeriodId = startPeriodEntity.Id,
-                    Length = requirement.Length
+                    StartPeriodId = startPeriodEntity.Id
                 });
             }
 
