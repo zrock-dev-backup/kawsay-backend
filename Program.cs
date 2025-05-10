@@ -1,4 +1,5 @@
 using kawsay.Data;
+using kawsay.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +9,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<KawsayDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
+
+builder.Services.AddScoped<SchedulingService>();
 
 builder.Services.AddCors(options =>
 {

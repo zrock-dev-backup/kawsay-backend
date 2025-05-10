@@ -11,7 +11,7 @@ public class ClassEntity
     public CourseEntity Course { get; set; } = default!;
     public int? TeacherId { get; set; }
     public TeacherEntity? Teacher { get; set; }
-    [Required] public int RequiredOccurrenceCount { get; set; }
-    [Required] public int OccurrenceLength { get; set; }
+    [Required] public int RequiredOccurrenceCount { get; init; }
+    [Required] public int OccurrenceLength { get; init; }
     public ICollection<ClassOccurrenceEntity> Occurrences { get; set; } = new List<ClassOccurrenceEntity>();
 }

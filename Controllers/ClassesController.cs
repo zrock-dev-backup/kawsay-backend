@@ -90,7 +90,7 @@ public class ClassesController : ControllerBase
     public async Task<ActionResult<Class>> CreateClass([FromBody] CreateClassRequest request)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-        if (request.Occurrences == null || request.Occurrences.Count == 0)
+        if (request.Occurrences.Count == 0)
             return BadRequest(new { message = "At least one occurrence is required." });
         if (request.Occurrences.Any(o => o.Length <= 0))
             return BadRequest(new { message = "Occurrence length must be positive." });
@@ -99,10 +99,9 @@ public class ClassesController : ControllerBase
         var course = await _context.Courses.FindAsync(request.CourseId);
         if (course == null) return BadRequest(new { message = $"Course with ID {request.CourseId} not found." });
 
-        TeacherEntity? teacher = null;
         if (request.TeacherId.HasValue)
         {
-            teacher = await _context.Teachers.FindAsync(request.TeacherId.Value);
+            var teacher = await _context.Teachers.FindAsync(request.TeacherId.Value);
             if (teacher == null)
                 return BadRequest(new { message = $"Teacher with ID {request.TeacherId.Value} not found." });
         }
@@ -118,10 +117,10 @@ public class ClassesController : ControllerBase
 
         foreach (var occ in request.Occurrences)
         {
-            if (!timetable.Days.Any(d => d.Id == occ.DayId))
+            if (timetable.Days.All(d => d.Id != occ.DayId))
                 return BadRequest(new
                     { message = $"Day ID {occ.DayId} not found in timetable {request.TimetableId}." });
-            if (!timetable.Periods.Any(p => p.Id == occ.StartPeriodId))
+            if (timetable.Periods.All(p => p.Id != occ.StartPeriodId))
                 return BadRequest(new
                     { message = $"Period ID {occ.StartPeriodId} not found in timetable {request.TimetableId}." });
             var startPeriodIndex = timetable.Periods.OrderBy(p => p.Start).ToList()
@@ -145,7 +144,9 @@ public class ClassesController : ControllerBase
                 DayId = o.DayId,
                 StartPeriodId = o.StartPeriodId,
                 Length = o.Length
-            }).ToList()
+            }).ToList(),
+            RequiredOccurrenceCount = request.Occurrences.Count,
+            OccurrenceLength = request.Occurrences[0].Length
         };
 
 
