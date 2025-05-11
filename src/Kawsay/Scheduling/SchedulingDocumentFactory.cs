@@ -3,9 +3,24 @@ using kawsay.Services;
 
 namespace kawsay.Scheduling;
 
-public static class SchedulingDocumentFactory
+public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int amntPeriods)
 {
-    private static void PopulatePeriodPreferences(ClassEntity classEntity, SchedulingRequirementLine requirementLine)
+    private readonly Dictionary<int, int> _periodIndexMap = MapIdToPeriodIndex(periods, amntPeriods) ?? new Dictionary<int, int>();
+
+    public static Dictionary<int, int>? MapIdToPeriodIndex(List<TimetablePeriodEntity> periods, int amntPeriods)
+    {
+        if (periods.Count != amntPeriods) {
+            Console.WriteLine($"Error: Periods list count ({periods.Count}) does not match period amount ({amntPeriods}).");
+            return null;
+        }
+        periods.Sort();
+        var periodIndexMap = new Dictionary<int, int>();
+        for (var i = 0; i < periods.Count; i++)
+            periodIndexMap.Add(periods[i].Id, i);
+        return periodIndexMap;
+    }
+
+    private void PopulatePeriodPreferences(ClassEntity classEntity, SchedulingRequirementLine requirementLine)
     {
         foreach (var occurrence in classEntity.PeriodPreferences)
         {
@@ -15,21 +30,23 @@ public static class SchedulingDocumentFactory
 
         return;
 
-        void SetRange(int start, int end)
+        void SetRange(int start, int length)
         {
-            for (var i = start; i < end; i++)
+            for (var i = start; i < length; i++)
             {
-                if (i >= 0 && i < requirementLine.PeriodPreferenceList.Count)
-                    requirementLine.PeriodPreferenceList[i] = 0;
-                else
+                var periodIndex = _periodIndexMap.GetValueOrDefault(i, -1);
+                if (periodIndex < 0)
+                {
                     Console.WriteLine(
-                        $"Warning: Attempted to set Z range [{start}-{end}] out of bounds. Index {i} out of {requirementLine.PeriodPreferenceList.Count}."
-                    );
+                        $"Warning: Period ID {i} not found in period index map. Skipping occurrence creation for this occurrence.");
+                    continue;
+                }
+                requirementLine.PeriodPreferenceList[periodIndex] = 0;
             }
         }
     }
 
-    public static LinkedList<SchedulingRequirementLine> GetDocument(
+    public LinkedList<SchedulingRequirementLine> GetDocument(
         List<ClassEntity> classesToSchedule,
         List<SchedulingEntity> allSchedulingEntities,
         TimetableEntity timetable
@@ -38,6 +55,13 @@ public static class SchedulingDocumentFactory
         var document = new LinkedList<SchedulingRequirementLine>();
         foreach (var classEntity in classesToSchedule)
         {
+            if (classEntity.PeriodPreferences.Count == 0)
+            {
+                Console.WriteLine(
+                    $"Warning: Class {classEntity.Id} ({classEntity.Course.Name}) has no period preferences. Skipping requirement creation for this class.");
+                continue;
+            }
+
             var frequency = classEntity.Frequency;
             var length = classEntity.Length;
             var entityIdsList = new List<int>();

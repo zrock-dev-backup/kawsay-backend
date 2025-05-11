@@ -37,16 +37,16 @@ public class SchedulingDocumentFactoryTest
     public void GetDocument_WithValidInput_ReturnsDocument()
     {
         const int classId = 1;
-        var periodPreferences = new List<PeriodPreference>
+        var periodPreferences = new List<PeriodPreferenceEntity>
         {
-            new(){
+            new()
+            {
                 ClassId = classId,
-                DayId = 0,
                 StartPeriodId = 1
             },
-            new(){
+            new()
+            {
                 ClassId = classId,
-                DayId = 0,
                 StartPeriodId = 5
             },
         };
@@ -71,9 +71,15 @@ public class SchedulingDocumentFactoryTest
             Days = PrepareTimetableDays(),
             Periods = PrepareTimetablePeriods()
         };
-        
+        var aux = 0;
+        foreach (var period in timetable.Periods)
+        {
+            period.Id = aux++;
+        }
 
-        var requirementDocument = SchedulingDocumentFactory.GetDocument(
+        var schedulingDocumentFactory =
+            new SchedulingDocumentFactory(timetable.Periods.ToList(), timetable.Periods.Count);
+        var requirementDocument = schedulingDocumentFactory.GetDocument(
             classesToSchedule,
             allSchedulingEntities,
             timetable
@@ -82,14 +88,73 @@ public class SchedulingDocumentFactoryTest
         Assert.NotEmpty(requirementDocument);
         Assert.Single(requirementDocument);
         var periodPreference = requirementDocument.First().PeriodPreferenceList;
-        
+
         Assert.Equal(11, periodPreference.Count);
         for (var i = 1; i < 9; i++)
         {
             Assert.Equal(0, periodPreference[i]);
         }
-        Assert.Equal(1, periodPreference[0]); 
-        Assert.Equal(1, periodPreference[9]); 
-        Assert.Equal(1, periodPreference[10]); 
+
+        Assert.Equal(1, periodPreference[0]);
+        Assert.Equal(1, periodPreference[9]);
+        Assert.Equal(1, periodPreference[10]);
+    }
+
+    [Fact]
+    public void MapIdToPeriodIndex_WithValidInput_PopulatesMap()
+    {
+        var timetable = new TimetableEntity
+        {
+            Days = PrepareTimetableDays(),
+            Periods = PrepareTimetablePeriods()
+        };
+
+        var aux = 200;
+        foreach (var period in timetable.Periods)
+        {
+            period.Id = aux++;
+        }
+
+        var map = SchedulingDocumentFactory.MapIdToPeriodIndex(timetable.Periods.ToList(),
+            timetable.Periods.Count);
+
+        Assert.NotNull(map);
+
+        var keyCollection = map.Keys;
+        var valueCollection = map.Values;
+        for (var i = 0; i < keyCollection.Count; i++)
+        {
+            var offset = i + 200;
+            Assert.Equal(offset, keyCollection.ElementAt(i));
+            Assert.Equal(i, valueCollection.ElementAt(i));
+        }
+    }
+    
+    [Fact]
+    public void MapIdToPeriodIndex_WithUnSortedInput_PopulatesMap()
+    {
+        var timetable = new TimetableEntity
+        {
+            Days = PrepareTimetableDays(),
+            Periods = PrepareTimetablePeriods()
+        };
+        var aux = 210;
+        foreach (var period in timetable.Periods)
+        {
+            period.Id = aux--;
+        }
+
+        var map = SchedulingDocumentFactory.MapIdToPeriodIndex(timetable.Periods.ToList(),
+            timetable.Periods.Count);
+        Assert.NotNull(map);
+
+        var keyCollection = map.Keys;
+        var valueCollection = map.Values;
+        for (var i = 0; i < keyCollection.Count; i++)
+        {
+            var offset = i + 200;
+            Assert.Equal(offset, keyCollection.ElementAt(i));
+            Assert.Equal(i, valueCollection.ElementAt(i));
+        }
     }
 }

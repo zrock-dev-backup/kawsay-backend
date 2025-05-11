@@ -14,46 +14,51 @@ public class SchedulingService(KawsayDbContext context)
     public async Task<bool> GenerateScheduleAsync(int timetableId)
     {
         Console.WriteLine($"Starting schedule generation for timetable ID: {timetableId}");
+
+        // Gather data from database
         var timetable = await context.Timetables
             .Include(t => t.Days)
             .Include(t => t.Periods)
             .FirstOrDefaultAsync(t => t.Id == timetableId);
         if (timetable == null) throw new ArgumentException($"Timetable with ID {timetableId} not found.");
-
         var classesToSchedule = await context.Classes
             .Include(c => c.Course)
             .Include(c => c.Teacher)
+            .Include(c => c.PeriodPreferences)
             .Where(c => c.TimetableId == timetableId)
             .Where(c => c.Frequency > 0 && c.Length > 0)
             .ToListAsync();
-
         var allTeachers = await context.Teachers.ToListAsync();
-        var allSchedulingEntities = new List<SchedulingEntity>();
-        allSchedulingEntities.AddRange(allTeachers.Select(t =>
-            new SchedulingEntity(t.Id, t.Name, timetable.Days.Count, timetable.Periods.Count)));
-        allSchedulingEntities.AddRange(classesToSchedule.Select(c => new SchedulingEntity(
-                c.Id + ClassEntityIdOffset,
-                $"Class {c.Id} ({c.Course.Code})",
-                timetable.Days.Count, timetable.Periods.Count)
-            )
-        );
 
-        var requirementDocument = SchedulingDocumentFactory.GetDocument(
+        // Populate list of scheduling entities
+        var allSchedulingEntities = new List<SchedulingEntity>();
+        allSchedulingEntities.AddRange(allTeachers.Select(teacher =>
+            new SchedulingEntity(
+                teacher.Id,
+                teacher.Name,
+                timetable.Days.Count,
+                timetable.Periods.Count
+            )));
+        allSchedulingEntities.AddRange(classesToSchedule.Select(lecture =>
+            new SchedulingEntity(
+                lecture.Id + ClassEntityIdOffset,
+                $"Class {lecture.Id} ({lecture.Course.Code})",
+                timetable.Days.Count,
+                timetable.Periods.Count
+            )));
+
+        // Generate requirements document
+        var schedulingDocumentFactory = new SchedulingDocumentFactory(timetable.Periods.ToList(), timetable.Periods.Count);
+        var requirementDocument = schedulingDocumentFactory.GetDocument(
             classesToSchedule,
             allSchedulingEntities,
             timetable
         );
-
         if (requirementDocument.Count == 0)
         {
             Console.WriteLine(
-                "No requirements generated for scheduling. Clearing existing schedule for this timetable.");
-            // var existingOccurrencesA = await context.ClassOccurrences
-            //     .Where(o => context.Classes.Any(c => c.Id == o.ClassId && c.TimetableId == timetableId))
-            //     .ToListAsync();
-            // context.ClassOccurrences.RemoveRange(existingOccurrencesA);
-            // await context.SaveChangesAsync();
-            return true;
+                "Generated list of requirement documents is empty. No classes to schedule. Skipping schedule generation.");
+            return false;
         }
 
         var attempts = 0;
