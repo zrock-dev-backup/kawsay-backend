@@ -1,27 +1,19 @@
 namespace kawsay.DTOs;
 
-public class ClassOccurrence
-{
-    public int Id { get; set; }
-    public int DayId { get; set; }
-    public int StartPeriodId { get; set; }
-    public int Length { get; set; }
-}
-
 public class Class
 {
     public int Id { get; set; }
     public int TimetableId { get; set; }
     public Course Course { get; set; } = new();
     public Teacher? Teacher { get; set; }
-    public List<ClassOccurrence> Occurrences { get; set; } = new();
+    public int Length { get; set; }
+    public int Frequency { get; set; }
+    public List<PeriodPreferencesDto> PeriodPreferencesList { get; set; } = [];
 }
 
-public class CreateClassOccurrenceDto
+public class PeriodPreferencesDto
 {
-    public int DayId { get; set; }
     public int StartPeriodId { get; set; }
-    public int Length { get; set; }
 }
 
 public class CreateClassRequest
@@ -29,14 +21,7 @@ public class CreateClassRequest
     public int TimetableId { get; set; }
     public int CourseId { get; set; }
     public int? TeacherId { get; set; }
-    public List<CreateClassOccurrenceDto> Occurrences { get; set; } = new();
-}
-
-public class UpdateClassRequest
-{
-    public int Id { get; set; }
-    public int TimetableId { get; set; }
-    public int CourseId { get; set; }
-    public int? TeacherId { get; set; }
-    public List<ClassOccurrence> Occurrences { get; set; } = new();
+    public int Length { get; set; }
+    public int Frequency { get; set; }
+    public List<PeriodPreferencesDto> PeriodPreferencesList { get; set; } = [];
 }

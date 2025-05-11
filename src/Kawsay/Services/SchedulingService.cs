@@ -19,7 +19,7 @@ public class SchedulingService(KawsayDbContext context)
             .Include(t => t.Periods)
             .FirstOrDefaultAsync(t => t.Id == timetableId);
         if (timetable == null) throw new ArgumentException($"Timetable with ID {timetableId} not found.");
-        
+
         var classesToSchedule = await context.Classes
             .Include(c => c.Course)
             .Include(c => c.Teacher)
@@ -31,8 +31,12 @@ public class SchedulingService(KawsayDbContext context)
         var allSchedulingEntities = new List<SchedulingEntity>();
         allSchedulingEntities.AddRange(allTeachers.Select(t =>
             new SchedulingEntity(t.Id, t.Name, timetable.Days.Count, timetable.Periods.Count)));
-        allSchedulingEntities.AddRange(classesToSchedule.Select(c => new SchedulingEntity(c.Id + ClassEntityIdOffset,
-            $"Class {c.Id} ({c.Course.Code})", timetable.Days.Count, timetable.Periods.Count)));
+        allSchedulingEntities.AddRange(classesToSchedule.Select(c => new SchedulingEntity(
+                c.Id + ClassEntityIdOffset,
+                $"Class {c.Id} ({c.Course.Code})",
+                timetable.Days.Count, timetable.Periods.Count)
+            )
+        );
 
         var requirementDocument = SchedulingDocumentFactory.GetDocument(
             classesToSchedule,
@@ -87,12 +91,12 @@ public class SchedulingService(KawsayDbContext context)
         }
 
         var classIdsToSchedule = classesToSchedule.Select(c => c.Id).ToList();
-        var existingOccurrences = await context.ClassOccurrences
+        var existingOccurrences = await context.PeriodPreferences
             .Where(o => classIdsToSchedule.Contains(o.ClassId))
             .ToListAsync();
-        context.ClassOccurrences.RemoveRange(existingOccurrences);
+        context.PeriodPreferences.RemoveRange(existingOccurrences);
 
-        var newOccurrences = new List<PeriodPreference>();
+        var newOccurrences = new List<PeriodPreferenceEntity>();
         var sortedDays = timetable.Days.OrderBy(d => SchedulingAlgorithm.DayOrder.IndexOf(d.Name)).ToList();
         var sortedPeriods = timetable.Periods.OrderBy(p => ParseExact(p.Start, "HH\\:mm", CultureInfo.InvariantCulture))
             .ToList();
@@ -119,12 +123,10 @@ public class SchedulingService(KawsayDbContext context)
                     continue;
                 }
 
-                var dayEntity = sortedDays[dayIndex];
                 var startPeriodEntity = sortedPeriods[periodIndex];
-                newOccurrences.Add(new PeriodPreference
+                newOccurrences.Add(new PeriodPreferenceEntity
                 {
                     ClassId = classEntityId,
-                    DayId = dayEntity.Id,
                     StartPeriodId = startPeriodEntity.Id
                 });
             }
@@ -132,7 +134,8 @@ public class SchedulingService(KawsayDbContext context)
             Console.WriteLine(
                 $"Created {requirement.AssignedTimeslotList.TimeslotDict.Count} new occurrences for Class Entity ID {classEntityId}.");
         }
-        context.ClassOccurrences.AddRange(newOccurrences);
+
+        context.PeriodPreferences.AddRange(newOccurrences);
         await context.SaveChangesAsync();
         Console.WriteLine(
             $"Finished schedule generation for timetable ID: {timetableId}. Overall success: {attempts < maxAttempts}");
@@ -140,7 +143,8 @@ public class SchedulingService(KawsayDbContext context)
 
         void InitializeJcMatrices()
         {
-            foreach (var entity in allSchedulingEntities) entity.AvailabilityMatrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
+            foreach (var entity in allSchedulingEntities)
+                entity.AvailabilityMatrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
         }
     }
 }

@@ -5,22 +5,14 @@ namespace kawsay.Controllers;
 
 [ApiController]
 [Route("kawsay/[controller]")]
-public class SchedulingController : ControllerBase
+public class SchedulingController(SchedulingService schedulingService) : ControllerBase
 {
-    private readonly SchedulingService _schedulingService;
-
-    public SchedulingController(SchedulingService schedulingService)
-    {
-        _schedulingService = schedulingService;
-    }
-
-
     [HttpPost("generate/{timetableId}")]
     public async Task<IActionResult> GenerateSchedule(int timetableId)
     {
         try
         {
-            var success = await _schedulingService.GenerateScheduleAsync(timetableId);
+            var success = await schedulingService.GenerateScheduleAsync(timetableId);
 
             if (success)
                 return Ok(new

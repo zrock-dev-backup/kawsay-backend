@@ -5,15 +5,16 @@ namespace kawsay.Data;
 
 public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbContext(options)
 {
+    // Create db tables
     public DbSet<CourseEntity> Courses { get; set; }
     public DbSet<TeacherEntity> Teachers { get; set; }
     public DbSet<TimetableEntity> Timetables { get; set; }
     public DbSet<TimetableDayEntity> TimetableDays { get; set; }
     public DbSet<TimetablePeriodEntity> TimetablePeriods { get; set; }
     public DbSet<ClassEntity> Classes { get; set; }
-    public DbSet<PeriodPreference> ClassOccurrences { get; set; }
+    public DbSet<PeriodPreferenceEntity> PeriodPreferences { get; set; }
 
-
+    // Relationship configurations
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TimetableEntity>()
@@ -34,13 +35,6 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             .HasForeignKey(c => c.TimetableId)
             .OnDelete(DeleteBehavior.Cascade);
 
-
-        modelBuilder.Entity<ClassEntity>()
-            .HasOne(c => c.Course)
-            .WithMany(course => course.Classes)
-            .HasForeignKey(c => c.CourseId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         modelBuilder.Entity<ClassEntity>()
             .HasOne(c => c.Teacher)
             .WithMany(teacher => teacher.Classes)
@@ -54,20 +48,13 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             .HasForeignKey(o => o.ClassId)
             .OnDelete(DeleteBehavior.Cascade);
 
-
-        modelBuilder.Entity<PeriodPreference>()
-            .HasOne(o => o.Day)
-            .WithMany(day => day.Occurrences)
-            .HasForeignKey(o => o.DayId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<PeriodPreference>()
+        modelBuilder.Entity<PeriodPreferenceEntity>()
             .HasOne(o => o.StartPeriod)
             .WithMany(period => period.Occurrences)
             .HasForeignKey(o => o.StartPeriodId)
             .OnDelete(DeleteBehavior.Restrict);
 
-
+        // Seed data
         modelBuilder.Entity<CourseEntity>().HasData(
             new CourseEntity { Id = 1, Name = "Programming 1", Code = "CSPR-101" },
             new CourseEntity { Id = 2, Name = "Programming 2", Code = "CSPR-124" },

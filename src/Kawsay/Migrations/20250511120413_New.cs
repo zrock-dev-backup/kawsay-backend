@@ -8,7 +8,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace kawsay.Migrations
 {
     /// <inheritdoc />
-    public partial class kawsaydev : Migration
+    public partial class New : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -63,8 +63,8 @@ namespace kawsay.Migrations
                     TimetableId = table.Column<int>(type: "integer", nullable: false),
                     CourseId = table.Column<int>(type: "integer", nullable: false),
                     TeacherId = table.Column<int>(type: "integer", nullable: true),
-                    RequiredOccurrenceCount = table.Column<int>(type: "integer", nullable: false),
-                    OccurrenceLength = table.Column<int>(type: "integer", nullable: false)
+                    Frequency = table.Column<int>(type: "integer", nullable: false),
+                    Length = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -131,33 +131,32 @@ namespace kawsay.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ClassOccurrences",
+                name: "PeriodPreferences",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     ClassId = table.Column<int>(type: "integer", nullable: false),
                     DayId = table.Column<int>(type: "integer", nullable: false),
-                    StartPeriodId = table.Column<int>(type: "integer", nullable: false),
-                    Length = table.Column<int>(type: "integer", nullable: false)
+                    StartPeriodId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ClassOccurrences", x => x.Id);
+                    table.PrimaryKey("PK_PeriodPreferences", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ClassOccurrences_Classes_ClassId",
+                        name: "FK_PeriodPreferences_Classes_ClassId",
                         column: x => x.ClassId,
                         principalTable: "Classes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_ClassOccurrences_TimetableDays_DayId",
+                        name: "FK_PeriodPreferences_TimetableDays_DayId",
                         column: x => x.DayId,
                         principalTable: "TimetableDays",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_ClassOccurrences_TimetablePeriods_StartPeriodId",
+                        name: "FK_PeriodPreferences_TimetablePeriods_StartPeriodId",
                         column: x => x.StartPeriodId,
                         principalTable: "TimetablePeriods",
                         principalColumn: "Id",
@@ -201,18 +200,18 @@ namespace kawsay.Migrations
                 column: "TimetableId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ClassOccurrences_ClassId",
-                table: "ClassOccurrences",
+                name: "IX_PeriodPreferences_ClassId",
+                table: "PeriodPreferences",
                 column: "ClassId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ClassOccurrences_DayId",
-                table: "ClassOccurrences",
+                name: "IX_PeriodPreferences_DayId",
+                table: "PeriodPreferences",
                 column: "DayId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ClassOccurrences_StartPeriodId",
-                table: "ClassOccurrences",
+                name: "IX_PeriodPreferences_StartPeriodId",
+                table: "PeriodPreferences",
                 column: "StartPeriodId");
 
             migrationBuilder.CreateIndex(
@@ -230,7 +229,7 @@ namespace kawsay.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "ClassOccurrences");
+                name: "PeriodPreferences");
 
             migrationBuilder.DropTable(
                 name: "Classes");

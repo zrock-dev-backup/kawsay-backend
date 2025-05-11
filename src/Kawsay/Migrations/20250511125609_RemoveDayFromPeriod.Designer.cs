@@ -11,8 +11,8 @@ using kawsay.Data;
 namespace kawsay.Migrations
 {
     [DbContext(typeof(KawsayDbContext))]
-    [Migration("20250506192601_kawsay-dev")]
-    partial class kawsaydev
+    [Migration("20250511125609_RemoveDayFromPeriod")]
+    partial class RemoveDayFromPeriod
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -35,10 +35,10 @@ namespace kawsay.Migrations
                     b.Property<int>("CourseId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("OccurrenceLength")
+                    b.Property<int>("Frequency")
                         .HasColumnType("integer");
 
-                    b.Property<int>("RequiredOccurrenceCount")
+                    b.Property<int>("Length")
                         .HasColumnType("integer");
 
                     b.Property<int?>("TeacherId")
@@ -56,37 +56,6 @@ namespace kawsay.Migrations
                     b.HasIndex("TimetableId");
 
                     b.ToTable("Classes");
-                });
-
-            modelBuilder.Entity("kawsay.Entities.ClassOccurrenceEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ClassId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("DayId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Length")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("StartPeriodId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClassId");
-
-                    b.HasIndex("DayId");
-
-                    b.HasIndex("StartPeriodId");
-
-                    b.ToTable("ClassOccurrences");
                 });
 
             modelBuilder.Entity("kawsay.Entities.CourseEntity", b =>
@@ -136,6 +105,34 @@ namespace kawsay.Migrations
                             Code = "MATH-101",
                             Name = "Calculus I"
                         });
+                });
+
+            modelBuilder.Entity("kawsay.Entities.PeriodPreferenceEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClassId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StartPeriodId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TimetableDayEntityId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId");
+
+                    b.HasIndex("StartPeriodId");
+
+                    b.HasIndex("TimetableDayEntityId");
+
+                    b.ToTable("PeriodPreferences");
                 });
 
             modelBuilder.Entity("kawsay.Entities.TeacherEntity", b =>
@@ -255,7 +252,7 @@ namespace kawsay.Migrations
                     b.HasOne("kawsay.Entities.CourseEntity", "Course")
                         .WithMany("Classes")
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("kawsay.Entities.TeacherEntity", "Teacher")
@@ -276,18 +273,12 @@ namespace kawsay.Migrations
                     b.Navigation("Timetable");
                 });
 
-            modelBuilder.Entity("kawsay.Entities.ClassOccurrenceEntity", b =>
+            modelBuilder.Entity("kawsay.Entities.PeriodPreferenceEntity", b =>
                 {
                     b.HasOne("kawsay.Entities.ClassEntity", "Class")
-                        .WithMany("Occurrences")
+                        .WithMany("PeriodPreferences")
                         .HasForeignKey("ClassId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("kawsay.Entities.TimetableDayEntity", "Day")
-                        .WithMany("Occurrences")
-                        .HasForeignKey("DayId")
-                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("kawsay.Entities.TimetablePeriodEntity", "StartPeriod")
@@ -296,9 +287,11 @@ namespace kawsay.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Class");
+                    b.HasOne("kawsay.Entities.TimetableDayEntity", null)
+                        .WithMany("Occurrences")
+                        .HasForeignKey("TimetableDayEntityId");
 
-                    b.Navigation("Day");
+                    b.Navigation("Class");
 
                     b.Navigation("StartPeriod");
                 });
@@ -327,7 +320,7 @@ namespace kawsay.Migrations
 
             modelBuilder.Entity("kawsay.Entities.ClassEntity", b =>
                 {
-                    b.Navigation("Occurrences");
+                    b.Navigation("PeriodPreferences");
                 });
 
             modelBuilder.Entity("kawsay.Entities.CourseEntity", b =>

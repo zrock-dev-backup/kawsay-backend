@@ -18,5 +18,5 @@ public class ClassEntity
     [Required] public int Frequency { get; init; }
     [Required] public int Length { get; init; }
     
-    public ICollection<PeriodPreference> PeriodPreferences { get; set; } = new List<PeriodPreference>();
+    public ICollection<PeriodPreferenceEntity> PeriodPreferences { get; set; } = new List<PeriodPreferenceEntity>();
 }
