@@ -24,7 +24,7 @@ public static class SchedulingDocumentFactory
                 else
                     Console.WriteLine(
                         $"Warning: Attempted to set Z range [{start}-{end}] out of bounds. Index {i} out of {requirementLine.PeriodPreferenceList.Count}."
-                        );
+                    );
             }
         }
     }
@@ -42,14 +42,11 @@ public static class SchedulingDocumentFactory
             var length = classEntity.Length;
             var entityIdsList = new List<int>();
 
-            if (classEntity.TeacherId.HasValue)
-            {
-                if (allSchedulingEntities.Any(entity => entity.Id == classEntity.TeacherId.Value))
-                    entityIdsList.Add(classEntity.TeacherId.Value);
-                else
-                    Console.WriteLine(
-                        $"Warning: Teacher ID {classEntity.TeacherId.Value} for Class {classEntity.Id} not found in global SchedulingEntities list. Skipping teacher for S list for this requirement.");
-            }
+            if (allSchedulingEntities.Any(entity => entity.Id == classEntity.TeacherId))
+                entityIdsList.Add(classEntity.TeacherId);
+            else
+                Console.WriteLine(
+                    $"Warning: Teacher ID {classEntity.TeacherId} for Class {classEntity.Id} not found in global SchedulingEntities list. Skipping teacher for S list for this requirement.");
 
             var classSchedulingEntityId = classEntity.Id + SchedulingService.ClassEntityIdOffset;
             if (allSchedulingEntities.Any(entity => entity.Id == classSchedulingEntityId))

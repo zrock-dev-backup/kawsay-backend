@@ -12,8 +12,8 @@ public class ClassEntity
     public int CourseId { get; set; }
     public CourseEntity Course { get; set; } = default!;
     
-    public int? TeacherId { get; set; }
-    public TeacherEntity? Teacher { get; set; }
+    public int TeacherId { get; set; }
+    public TeacherEntity Teacher { get; set; } = default!;
     
     [Required] public int Frequency { get; init; }
     [Required] public int Length { get; init; }

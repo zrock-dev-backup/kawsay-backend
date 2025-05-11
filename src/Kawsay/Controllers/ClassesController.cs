@@ -15,7 +15,7 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
     {
         var timetableExists = await context.Timetables.AnyAsync(t => t.Id == timetableId);
         if (!timetableExists) return NotFound(new { message = $"Timetable with ID {timetableId} not found." });
-        
+
         var classes = await context.Classes
             .Include(c => c.Course)
             .Include(c => c.Teacher)
@@ -28,9 +28,7 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
             Id = cls.Id,
             TimetableId = cls.TimetableId,
             Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
-            Teacher = cls.Teacher != null
-                ? new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type }
-                : null,
+            Teacher = new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
             PeriodPreferencesList = cls.PeriodPreferences.Select(o => new PeriodPreferencesDto()
             {
                 StartPeriodId = o.StartPeriodId,
@@ -58,9 +56,7 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
             Id = cls.Id,
             TimetableId = cls.TimetableId,
             Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
-            Teacher = cls.Teacher != null
-                ? new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type }
-                : null,
+            Teacher = new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
             PeriodPreferencesList = cls.PeriodPreferences.Select(o => new PeriodPreferencesDto
             {
                 StartPeriodId = o.StartPeriodId,
@@ -83,18 +79,16 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
             };
             return BadRequest(errorResponse);
         }
+
         if (request.PeriodPreferencesList.Count == 0 || request.Frequency == 0 || request.Length == 0)
             return BadRequest(new { message = "A field has a 0 value" });
 
         var course = await context.Courses.FindAsync(request.CourseId);
         if (course == null) return BadRequest(new { message = $"Course with ID {request.CourseId} not found." });
 
-        if (request.TeacherId.HasValue)
-        {
-            var teacher = await context.Teachers.FindAsync(request.TeacherId.Value);
-            if (teacher == null)
-                return BadRequest(new { message = $"Teacher with ID {request.TeacherId.Value} not found." });
-        }
+        var teacher = await context.Teachers.FindAsync(request.TeacherId);
+        if (teacher == null)
+            return BadRequest(new { message = $"Teacher with ID {request.TeacherId} not found." });
 
         var timetable = await context.Timetables
             .Include(t => t.Days)
@@ -128,6 +122,8 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
             TimetableId = request.TimetableId,
             CourseId = request.CourseId,
             TeacherId = request.TeacherId,
+            Frequency = request.Frequency,
+            Length = request.Length,
             PeriodPreferences = request.PeriodPreferencesList.Select(o => new PeriodPreferenceEntity()
             {
                 StartPeriodId = o.StartPeriodId,
@@ -147,19 +143,21 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
         {
             Id = createdClassEntity!.Id,
             TimetableId = createdClassEntity.TimetableId,
+            Length = createdClassEntity.Length,
+            Frequency = createdClassEntity.Frequency,
             Course = new Course
             {
-                Id = createdClassEntity.Course.Id, Name = createdClassEntity.Course.Name,
+                Id = createdClassEntity.Course.Id,
+                Name = createdClassEntity.Course.Name,
                 Code = createdClassEntity.Course.Code
             },
-            Teacher = createdClassEntity.Teacher != null
-                ? new Teacher
-                {
-                    Id = createdClassEntity.Teacher.Id, Name = createdClassEntity.Teacher.Name,
-                    Type = createdClassEntity.Teacher.Type
-                }
-                : null,
-            PeriodPreferencesList = createdClassEntity.PeriodPreferences.Select(o => new PeriodPreferencesDto 
+            Teacher = new Teacher
+            {
+                Id = createdClassEntity.Teacher.Id,
+                Name = createdClassEntity.Teacher.Name,
+                Type = createdClassEntity.Teacher.Type
+            },
+            PeriodPreferencesList = createdClassEntity.PeriodPreferences.Select(o => new PeriodPreferencesDto
                 { StartPeriodId = o.StartPeriodId }).ToList()
         };
 
