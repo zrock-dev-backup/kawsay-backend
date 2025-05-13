@@ -22,7 +22,7 @@ public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int 
 
     private void PopulatePeriodPreferences(ClassEntity classEntity, SchedulingRequirementLine requirementLine)
     {
-        foreach (var occurrence in classEntity.PeriodPreferences)
+        foreach (var occurrence in classEntity.ClassOccurrences)
         {
             var start = occurrence.StartPeriodId;
             SetRange(start, start + classEntity.Length);
@@ -55,7 +55,7 @@ public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int 
         var document = new LinkedList<SchedulingRequirementLine>();
         foreach (var classEntity in classesToSchedule)
         {
-            if (classEntity.PeriodPreferences.Count == 0)
+            if (classEntity.ClassOccurrences.Count == 0)
             {
                 Console.WriteLine(
                     $"Warning: Class {classEntity.Id} ({classEntity.Course.Name}) has no period preferences. Skipping requirement creation for this class.");

@@ -2,8 +2,8 @@ namespace kawsay.Scheduling.Utils;
 
 public class Pair(int a, int b)
 {
-    private readonly int _a = a;
-    private readonly int _b = b;
+    public int A { get; } = a;
+    public int B { get; } = b;
 
     public override bool Equals(object? obj)
     {
@@ -12,11 +12,11 @@ public class Pair(int a, int b)
 
     private bool Equals(Pair other)
     {
-        return _a == other._a && _b == other._b;
+        return A == other.A && B == other.B;
     }
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(_a, _b);
+        return HashCode.Combine(A, B);
     }
 }

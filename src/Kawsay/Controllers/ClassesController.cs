@@ -11,7 +11,7 @@ namespace kawsay.Controllers;
 public class ClassesController(KawsayDbContext context) : ControllerBase
 {
     [HttpGet("classes")]
-    public async Task<ActionResult<IEnumerable<Class>>> GetClassesByTimetable([FromQuery] int timetableId)
+    public async Task<ActionResult<IEnumerable<ClassDto>>> GetClassesByTimetable([FromQuery] int timetableId)
     {
         var timetableExists = await context.Timetables.AnyAsync(t => t.Id == timetableId);
         if (!timetableExists) return NotFound(new { message = $"Timetable with ID {timetableId} not found." });
@@ -19,19 +19,22 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
         var classes = await context.Classes
             .Include(c => c.Course)
             .Include(c => c.Teacher)
-            .Include(c => c.PeriodPreferences)
+            .Include(c => c.ClassOccurrences)
             .Where(c => c.TimetableId == timetableId)
             .ToListAsync();
 
-        var classDtos = classes.Select(cls => new Class
+        var classDtos = classes.Select(cls => new ClassDto
         {
             Id = cls.Id,
             TimetableId = cls.TimetableId,
+            Frequency = cls.Frequency,
+            Length = cls.Length,
             Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
             Teacher = new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
-            PeriodPreferencesList = cls.PeriodPreferences.Select(o => new PeriodPreferencesDto()
+            ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrence()
             {
                 StartPeriodId = o.StartPeriodId,
+                DayId = o.DayId,
             }).ToList()
         }).ToList();
 
@@ -39,25 +42,25 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
     }
 
     [HttpGet("class/{id}")]
-    public async Task<ActionResult<Class>> GetClass(int id)
+    public async Task<ActionResult<ClassDto>> GetClass(int id)
     {
         var cls = await context.Classes
             .Include(c => c.Course)
             .Include(c => c.Teacher)
-            .Include(c => c.PeriodPreferences)
+            .Include(c => c.ClassOccurrences)
             .Where(c => c.Id == id)
             .FirstOrDefaultAsync();
 
         if (cls == null) return NotFound();
 
 
-        var classDto = new Class
+        var classDto = new ClassDto
         {
             Id = cls.Id,
             TimetableId = cls.TimetableId,
             Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
             Teacher = new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
-            PeriodPreferencesList = cls.PeriodPreferences.Select(o => new PeriodPreferencesDto
+            PeriodPreferencesList = cls.ClassOccurrences.Select(o => new PeriodPreferencesDto
             {
                 StartPeriodId = o.StartPeriodId,
             }).ToList()
@@ -67,7 +70,7 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
     }
 
     [HttpPost("class")]
-    public async Task<ActionResult<Class>> CreateClass([FromBody] CreateClassRequest request)
+    public async Task<ActionResult<ClassDto>> CreateClass([FromBody] CreateClassRequest request)
     {
         if (!ModelState.IsValid)
         {
@@ -124,7 +127,7 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
             TeacherId = request.TeacherId,
             Frequency = request.Frequency,
             Length = request.Length,
-            PeriodPreferences = request.PeriodPreferencesList.Select(o => new PeriodPreferenceEntity()
+            PeriodPreferences = request.PeriodPreferencesList.Select(o => new PeriodPreferenceEntity
             {
                 StartPeriodId = o.StartPeriodId,
             }).ToList()
@@ -135,11 +138,11 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
         var createdClassEntity = await context.Classes
             .Include(c => c.Course)
             .Include(c => c.Teacher)
-            .Include(c => c.PeriodPreferences)
+            .Include(c => c.ClassOccurrences)
             .Where(c => c.Id == classEntity.Id)
             .FirstOrDefaultAsync();
 
-        var createdClassDto = new Class
+        var createdClassDto = new ClassDto
         {
             Id = createdClassEntity!.Id,
             TimetableId = createdClassEntity.TimetableId,
@@ -157,8 +160,11 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
                 Name = createdClassEntity.Teacher.Name,
                 Type = createdClassEntity.Teacher.Type
             },
-            PeriodPreferencesList = createdClassEntity.PeriodPreferences.Select(o => new PeriodPreferencesDto
-                { StartPeriodId = o.StartPeriodId }).ToList()
+            ClassOccurrences = createdClassEntity.ClassOccurrences.Select(o => new ClassOccurrence()
+            {
+                StartPeriodId = o.StartPeriodId,
+                DayId = o.DayId,
+            }).ToList()
         };
 
         return CreatedAtAction(nameof(GetClass), new { id = createdClassDto.Id }, createdClassDto);

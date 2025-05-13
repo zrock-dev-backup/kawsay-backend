@@ -8,5 +8,5 @@ public class TimetableDayEntity
     [Required] [MaxLength(20)] public string Name { get; set; } = string.Empty;
     public int TimetableId { get; set; }
     public TimetableEntity Timetable { get; set; } = default!;
-    public ICollection<PeriodPreferenceEntity> Occurrences { get; set; } = new List<PeriodPreferenceEntity>();
+    public ICollection<ClassOccurrence> Occurrences { get; set; } = new List<ClassOccurrence>();
 }

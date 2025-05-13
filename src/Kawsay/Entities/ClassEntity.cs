@@ -19,4 +19,5 @@ public class ClassEntity
     [Required] public int Length { get; init; }
     
     public ICollection<PeriodPreferenceEntity> PeriodPreferences { get; set; } = new List<PeriodPreferenceEntity>();
+    public ICollection<ClassOccurrence> ClassOccurrences { get; set; } = new List<ClassOccurrence>();
 }

@@ -1,6 +1,8 @@
+using kawsay.Entities;
+
 namespace kawsay.DTOs;
 
-public class Class
+public class ClassDto
 {
     public int Id { get; set; }
     public int TimetableId { get; set; }
@@ -9,6 +11,7 @@ public class Class
     public int Length { get; set; }
     public int Frequency { get; set; }
     public List<PeriodPreferencesDto> PeriodPreferencesList { get; set; } = [];
+    public ICollection<ClassOccurrence> ClassOccurrences { get; set; } = new List<ClassOccurrence>();
 }
 
 public class PeriodPreferencesDto

@@ -2,6 +2,7 @@ using System.Globalization;
 using kawsay.Data;
 using kawsay.Entities;
 using kawsay.Scheduling;
+using kawsay.Scheduling.Utils;
 using Microsoft.EntityFrameworkCore;
 using static System.TimeSpan;
 
@@ -24,7 +25,7 @@ public class SchedulingService(KawsayDbContext context)
         var classesToSchedule = await context.Classes
             .Include(c => c.Course)
             .Include(c => c.Teacher)
-            .Include(c => c.PeriodPreferences)
+            .Include(c => c.ClassOccurrences)
             .Where(c => c.TimetableId == timetableId)
             .Where(c => c.Frequency > 0 && c.Length > 0)
             .ToListAsync();
@@ -48,7 +49,8 @@ public class SchedulingService(KawsayDbContext context)
             )));
 
         // Generate requirements document
-        var schedulingDocumentFactory = new SchedulingDocumentFactory(timetable.Periods.ToList(), timetable.Periods.Count);
+        var schedulingDocumentFactory =
+            new SchedulingDocumentFactory(timetable.Periods.ToList(), timetable.Periods.Count);
         var requirementDocument = schedulingDocumentFactory.GetDocument(
             classesToSchedule,
             allSchedulingEntities,
@@ -95,16 +97,26 @@ public class SchedulingService(KawsayDbContext context)
             return false;
         }
 
+        //
+        // Store generated schedule
+        //
+
+        // Cleanup class old period preferences
         var classIdsToSchedule = classesToSchedule.Select(c => c.Id).ToList();
         var existingOccurrences = await context.PeriodPreferences
             .Where(o => classIdsToSchedule.Contains(o.ClassId))
             .ToListAsync();
         context.PeriodPreferences.RemoveRange(existingOccurrences);
 
-        var newOccurrences = new List<PeriodPreferenceEntity>();
-        var sortedDays = timetable.Days.OrderBy(d => SchedulingAlgorithm.DayOrder.IndexOf(d.Name)).ToList();
-        var sortedPeriods = timetable.Periods.OrderBy(p => ParseExact(p.Start, "HH\\:mm", CultureInfo.InvariantCulture))
-            .ToList();
+        var newOccurrences = new List<ClassOccurrence>();
+        var map = new Dictionary<int, List<int>>();
+        foreach (var day in timetable.Days)
+        {
+            map.Add(day.Id, timetable.Periods.Select(o => o.Id).ToList());
+        }
+
+        var mapHelper = new IndexIdMapHelper(timetable.Days.Count, timetable.Periods.Count, map);
+
         foreach (var requirement in currentDocument)
         {
             var classEntitySchedulingId = requirement.EntitiesList.FirstOrDefault(id => id >= ClassEntityIdOffset);
@@ -118,21 +130,15 @@ public class SchedulingService(KawsayDbContext context)
             var classEntityId = classEntitySchedulingId - ClassEntityIdOffset;
             foreach (var resultPair in requirement.AssignedTimeslotList.TimeslotDict.Values)
             {
-                var dayIndex = resultPair[0];
-                var periodIndex = resultPair[1];
-                if (dayIndex < 0 || dayIndex >= sortedDays.Count || periodIndex < 0 ||
-                    periodIndex >= sortedPeriods.Count)
+                var pair = mapHelper.GetId(new Pair(resultPair[1], resultPair[1]));
+                var dayIndex = pair.A;
+                var periodIndex = pair.B;
+                newOccurrences.Add(new ClassOccurrence 
                 {
-                    Console.WriteLine(
-                        $"Warning: Algorithm result indices out of bounds for Class Entity ID {classEntityId}: Day index {dayIndex} (max {sortedDays.Count - 1}), Period index {periodIndex} (max {sortedPeriods.Count - 1}). Skipping occurrence creation for this result.");
-                    continue;
-                }
-
-                var startPeriodEntity = sortedPeriods[periodIndex];
-                newOccurrences.Add(new PeriodPreferenceEntity
-                {
+                    
                     ClassId = classEntityId,
-                    StartPeriodId = startPeriodEntity.Id
+                    DayId = dayIndex,
+                    StartPeriodId = periodIndex
                 });
             }
 
@@ -140,7 +146,7 @@ public class SchedulingService(KawsayDbContext context)
                 $"Created {requirement.AssignedTimeslotList.TimeslotDict.Count} new occurrences for Class Entity ID {classEntityId}.");
         }
 
-        context.PeriodPreferences.AddRange(newOccurrences);
+        context.ClassOccurrences.AddRange(newOccurrences);
         await context.SaveChangesAsync();
         Console.WriteLine(
             $"Finished schedule generation for timetable ID: {timetableId}. Overall success: {attempts < maxAttempts}");

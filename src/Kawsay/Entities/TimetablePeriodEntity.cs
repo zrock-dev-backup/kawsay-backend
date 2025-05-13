@@ -11,7 +11,8 @@ public class TimetablePeriodEntity : IComparable
     public int TimetableId { get; set; }
     public TimetableEntity Timetable { get; set; } = default!;
     
-    public ICollection<PeriodPreferenceEntity> Occurrences { get; set; } = new List<PeriodPreferenceEntity>();
+    public ICollection<PeriodPreferenceEntity> PeriodPreferences { get; set; } = new List<PeriodPreferenceEntity>();
+    public ICollection<ClassOccurrence> Occurrences { get; set; } = new List<ClassOccurrence>();
 
 
     public int CompareTo(object? obj)
