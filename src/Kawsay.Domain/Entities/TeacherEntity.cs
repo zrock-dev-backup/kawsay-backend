@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Api.Entities;
+namespace Domain.Entities;
 
 public class TeacherEntity
 {

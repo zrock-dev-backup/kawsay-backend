@@ -1,5 +1,5 @@
-using Api.Entities;
 using Api.Services;
+using Domain.Entities;
 
 namespace Api.Scheduling;
 

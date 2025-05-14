@@ -1,6 +1,6 @@
 using Api.Data;
 using Api.DTOs;
-using Api.Entities;
+using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
