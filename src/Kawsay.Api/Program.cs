@@ -1,5 +1,7 @@
 using Api.Services;
+using Application.Interfaces.Persistence;
 using Infrastructure.Persistence;
+using Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,11 +12,12 @@ builder.Services.AddDbContext<KawsayDbContext>(options =>
 {
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        b => b.MigrationsAssembly(typeof(Program).Assembly.FullName)
+        b => b.MigrationsAssembly(typeof(KawsayDbContext).Assembly.FullName)
     );
 });
 
 builder.Services.AddScoped<SchedulingService>();
+builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 
 builder.Services.AddCors(options =>
 {

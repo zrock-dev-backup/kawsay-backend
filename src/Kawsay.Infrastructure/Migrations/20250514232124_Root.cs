@@ -5,10 +5,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
-namespace Api.Migrations
+namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class New : Migration
+    public partial class Root : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -62,7 +62,7 @@ namespace Api.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     TimetableId = table.Column<int>(type: "integer", nullable: false),
                     CourseId = table.Column<int>(type: "integer", nullable: false),
-                    TeacherId = table.Column<int>(type: "integer", nullable: true),
+                    TeacherId = table.Column<int>(type: "integer", nullable: false),
                     Frequency = table.Column<int>(type: "integer", nullable: false),
                     Length = table.Column<int>(type: "integer", nullable: false)
                 },
@@ -74,7 +74,7 @@ namespace Api.Migrations
                         column: x => x.CourseId,
                         principalTable: "Courses",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Classes_Teachers_TeacherId",
                         column: x => x.TeacherId,
@@ -131,13 +131,45 @@ namespace Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "PeriodPreferences",
+                name: "ClassOccurrences",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     ClassId = table.Column<int>(type: "integer", nullable: false),
                     DayId = table.Column<int>(type: "integer", nullable: false),
+                    StartPeriodId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ClassOccurrences", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ClassOccurrences_Classes_ClassId",
+                        column: x => x.ClassId,
+                        principalTable: "Classes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ClassOccurrences_TimetableDays_DayId",
+                        column: x => x.DayId,
+                        principalTable: "TimetableDays",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ClassOccurrences_TimetablePeriods_StartPeriodId",
+                        column: x => x.StartPeriodId,
+                        principalTable: "TimetablePeriods",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PeriodPreferences",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ClassId = table.Column<int>(type: "integer", nullable: false),
                     StartPeriodId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
@@ -149,12 +181,6 @@ namespace Api.Migrations
                         principalTable: "Classes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_PeriodPreferences_TimetableDays_DayId",
-                        column: x => x.DayId,
-                        principalTable: "TimetableDays",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_PeriodPreferences_TimetablePeriods_StartPeriodId",
                         column: x => x.StartPeriodId,
@@ -200,14 +226,24 @@ namespace Api.Migrations
                 column: "TimetableId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PeriodPreferences_ClassId",
-                table: "PeriodPreferences",
+                name: "IX_ClassOccurrences_ClassId",
+                table: "ClassOccurrences",
                 column: "ClassId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PeriodPreferences_DayId",
-                table: "PeriodPreferences",
+                name: "IX_ClassOccurrences_DayId",
+                table: "ClassOccurrences",
                 column: "DayId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ClassOccurrences_StartPeriodId",
+                table: "ClassOccurrences",
+                column: "StartPeriodId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PeriodPreferences_ClassId",
+                table: "PeriodPreferences",
+                column: "ClassId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PeriodPreferences_StartPeriodId",
@@ -229,13 +265,16 @@ namespace Api.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "ClassOccurrences");
+
+            migrationBuilder.DropTable(
                 name: "PeriodPreferences");
 
             migrationBuilder.DropTable(
-                name: "Classes");
+                name: "TimetableDays");
 
             migrationBuilder.DropTable(
-                name: "TimetableDays");
+                name: "Classes");
 
             migrationBuilder.DropTable(
                 name: "TimetablePeriods");
