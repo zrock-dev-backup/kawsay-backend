@@ -1,8 +1,8 @@
 using System.Globalization;
-using Api.Data;
 using Api.Scheduling;
 using Api.Scheduling.Utils;
 using Domain.Entities;
+using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using static System.TimeSpan;
 

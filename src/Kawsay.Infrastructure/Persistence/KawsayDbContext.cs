@@ -1,7 +1,7 @@
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Api.Data;
+namespace Infrastructure.Persistence;
 
 public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbContext(options)
 {

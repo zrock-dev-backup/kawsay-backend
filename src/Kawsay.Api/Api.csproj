@@ -24,5 +24,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Kawsay.Application\Application.csproj" />
+      <ProjectReference Include="..\Kawsay.Infrastructure\Infrastructure.csproj" />
     </ItemGroup>
 </Project>
