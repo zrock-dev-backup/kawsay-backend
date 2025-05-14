@@ -31,7 +31,7 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
             Length = cls.Length,
             Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
             Teacher = new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
-            ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrence()
+            ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto
             {
                 StartPeriodId = o.StartPeriodId,
                 DayId = o.DayId,
@@ -160,7 +160,7 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
                 Name = createdClassEntity.Teacher.Name,
                 Type = createdClassEntity.Teacher.Type
             },
-            ClassOccurrences = createdClassEntity.ClassOccurrences.Select(o => new ClassOccurrence()
+            ClassOccurrences = createdClassEntity.ClassOccurrences.Select(o => new ClassOccurrenceDto()
             {
                 StartPeriodId = o.StartPeriodId,
                 DayId = o.DayId,

@@ -11,7 +11,7 @@ public class ClassDto
     public int Length { get; set; }
     public int Frequency { get; set; }
     public List<PeriodPreferencesDto> PeriodPreferencesList { get; set; } = [];
-    public ICollection<ClassOccurrence> ClassOccurrences { get; set; } = new List<ClassOccurrence>();
+    public ICollection<ClassOccurrenceDto> ClassOccurrences { get; set; } = new List<ClassOccurrenceDto>();
 }
 
 public class PeriodPreferencesDto
