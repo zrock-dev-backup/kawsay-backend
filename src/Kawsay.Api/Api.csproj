@@ -23,10 +23,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Domain\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\Kawsay.Application\Application.csproj" />
     </ItemGroup>
 </Project>
