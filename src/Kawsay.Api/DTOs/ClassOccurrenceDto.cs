@@ -1,4 +1,4 @@
-namespace kawsay.DTOs;
+namespace Api.DTOs;
 
 public class ClassOccurrenceDto
 {

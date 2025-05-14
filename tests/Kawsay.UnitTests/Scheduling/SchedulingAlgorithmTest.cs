@@ -1,3 +1,4 @@
+using Api.Scheduling;
 using Xunit;
 
 namespace kawsay.Scheduling;

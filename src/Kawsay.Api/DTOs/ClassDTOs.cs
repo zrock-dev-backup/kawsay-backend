@@ -1,6 +1,4 @@
-using kawsay.Entities;
-
-namespace kawsay.DTOs;
+namespace Api.DTOs;
 
 public class ClassDto
 {

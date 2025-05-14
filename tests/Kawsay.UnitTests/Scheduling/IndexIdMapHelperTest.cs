@@ -1,5 +1,4 @@
-using kawsay.Scheduling;
-using kawsay.Scheduling.Utils;
+using Api.Scheduling.Utils;
 
 namespace Kawsay.UnitTests.Scheduling;
 

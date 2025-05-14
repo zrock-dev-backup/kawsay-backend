@@ -1,10 +1,10 @@
-using kawsay.Data;
-using kawsay.DTOs;
-using kawsay.Entities;
+using Api.Data;
+using Api.DTOs;
+using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace kawsay.Controllers;
+namespace Api.Controllers;
 
 [ApiController]
 [Route("kawsay/[controller]")]

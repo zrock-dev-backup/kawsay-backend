@@ -1,6 +1,6 @@
-using kawsay.Entities;
-using kawsay.Scheduling;
-using kawsay.Services;
+using Api.Scheduling;
+using Api.Services;
+using Domain.Entities;
 
 namespace Kawsay.UnitTests.Scheduling;
 
