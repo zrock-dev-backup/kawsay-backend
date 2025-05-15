@@ -1,4 +1,6 @@
-using Api.Scheduling.Utils;
+
+using Application.Features.Scheduling.Models;
+using Application.Features.Scheduling.Utils;
 
 namespace Kawsay.UnitTests.Scheduling;
 

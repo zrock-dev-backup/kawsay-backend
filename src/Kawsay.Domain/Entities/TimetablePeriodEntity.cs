@@ -12,7 +12,7 @@ public class TimetablePeriodEntity : IComparable
     public TimetableEntity Timetable { get; set; } = default!;
     
     public ICollection<PeriodPreferenceEntity> PeriodPreferences { get; set; } = new List<PeriodPreferenceEntity>();
-    public ICollection<ClassOccurrence> Occurrences { get; set; } = new List<ClassOccurrence>();
+    public ICollection<ClassOccurrenceEntity> Occurrences { get; set; } = new List<ClassOccurrenceEntity>();
 
 
     public int CompareTo(object? obj)

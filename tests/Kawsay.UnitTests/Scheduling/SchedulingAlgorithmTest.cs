@@ -1,4 +1,5 @@
-using Api.Scheduling;
+using Application.Features.Scheduling.Algorithm;
+using Application.Features.Scheduling.Models;
 using Xunit;
 
 namespace kawsay.Scheduling;
@@ -88,7 +89,7 @@ public class SchedulingAlgorithmTest
         while (enumerator.MoveNext() && attempts < 10)
         {
             var req = enumerator.Current;
-            if (!SchedulingAlgorithm.Handler(req, entities, NumDays, NumPeriods))
+            if (!YuleAlgorithm.Handler(req, entities, NumDays, NumPeriods))
             {
                 document.Remove(req);
                 document.AddFirst(req);
@@ -98,7 +99,7 @@ public class SchedulingAlgorithmTest
             }
         }
         
-        PrintSchedule(document, entities);;
+        PrintSchedule(document, entities);
 
         return;
 

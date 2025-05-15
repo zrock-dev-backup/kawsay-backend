@@ -1,7 +1,8 @@
-using Api.Services;
+using Application.Features.Scheduling.Models;
+using Application.Models;
 using Domain.Entities;
 
-namespace Api.Scheduling;
+namespace Application.Features.Scheduling;
 
 public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int amntPeriods)
 {
@@ -20,9 +21,9 @@ public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int 
         return periodIndexMap;
     }
 
-    private void PopulatePeriodPreferences(ClassEntity classEntity, SchedulingRequirementLine requirementLine)
+    private void PopulatePeriodPreferences(Class classEntity, SchedulingRequirementLine requirementLine)
     {
-        foreach (var occurrence in classEntity.ClassOccurrences)
+        foreach (var occurrence in classEntity.PeriodPreferences)
         {
             var start = occurrence.StartPeriodId;
             SetRange(start, start + classEntity.Length);
@@ -37,6 +38,7 @@ public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int 
                 var periodIndex = _periodIndexMap.GetValueOrDefault(i, -1);
                 if (periodIndex < 0)
                 {
+                    // TODO: launch an exception instead of logging
                     Console.WriteLine(
                         $"Warning: Period ID {i} not found in period index map. Skipping occurrence creation for this occurrence.");
                     continue;
@@ -47,7 +49,7 @@ public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int 
     }
 
     public LinkedList<SchedulingRequirementLine> GetDocument(
-        List<ClassEntity> classesToSchedule,
+        List<Class> classesToSchedule,
         List<SchedulingEntity> allSchedulingEntities,
         TimetableEntity timetable
     )
@@ -55,10 +57,10 @@ public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int 
         var document = new LinkedList<SchedulingRequirementLine>();
         foreach (var classEntity in classesToSchedule)
         {
-            if (classEntity.ClassOccurrences.Count == 0)
+            if (classEntity.PeriodPreferences.Count == 0)
             {
                 Console.WriteLine(
-                    $"Warning: Class {classEntity.Id} ({classEntity.Course.Name}) has no period preferences. Skipping requirement creation for this class.");
+                    $"Warning: Class {classEntity.Id} ({classEntity.CourseDto.Name}) has no period preferences. Skipping requirement creation for this class.");
                 continue;
             }
 
@@ -66,11 +68,11 @@ public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int 
             var length = classEntity.Length;
             var entityIdsList = new List<int>();
 
-            if (allSchedulingEntities.Any(entity => entity.Id == classEntity.TeacherId))
-                entityIdsList.Add(classEntity.TeacherId);
+            if (allSchedulingEntities.Any(entity => entity.Id == classEntity.TeacherDto.Id))
+                entityIdsList.Add(classEntity.TeacherDto.Id);
             else
                 Console.WriteLine(
-                    $"Warning: Teacher ID {classEntity.TeacherId} for Class {classEntity.Id} not found in global SchedulingEntities list. Skipping teacher for S list for this requirement.");
+                    $"Warning: Teacher ID {classEntity.TeacherDto.Id} for Class {classEntity.Id} not found in global SchedulingEntities list. Skipping teacher for S list for this requirement.");
 
             var classSchedulingEntityId = classEntity.Id + SchedulingService.ClassEntityIdOffset;
             if (allSchedulingEntities.Any(entity => entity.Id == classSchedulingEntityId))
@@ -101,7 +103,7 @@ public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int 
             else
             {
                 Console.WriteLine(
-                    $"Warning: Skipping requirement creation for Class {classEntity.Id} ({classEntity.Course.Name})" +
+                    $"Warning: Skipping requirement creation for Class {classEntity.Id} ({classEntity.CourseDto.Name})" +
                     $" due to zero required occurrences ({frequency})/length ({length}) or no involved entities (S list count: {sList.Count}).");
             }
         }

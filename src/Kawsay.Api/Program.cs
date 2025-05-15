@@ -1,4 +1,4 @@
-using Api.Services;
+using Application.Features.Scheduling;
 using Application.Interfaces.Persistence;
 using Application.Services;
 using Infrastructure.Persistence;
@@ -22,6 +22,7 @@ builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
+builder.Services.AddScoped<IClassOccurrenceRepository, ClassOccurrenceRepository>();
 
 builder.Services.AddScoped<CourseService>();
 builder.Services.AddScoped<TeacherService>();

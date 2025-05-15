@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Domain.Entities;
 
-public class ClassOccurrence
+public class ClassOccurrenceEntity
 {
     [Key] public int Id { get; set; }
     

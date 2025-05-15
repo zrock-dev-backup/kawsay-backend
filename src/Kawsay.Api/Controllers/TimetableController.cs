@@ -1,5 +1,5 @@
 using Api.Data;
-using Application.Data;
+using Application.Models;
 using Application.Services;
 using Microsoft.AspNetCore.Mvc;
 

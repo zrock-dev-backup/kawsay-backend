@@ -1,6 +1,6 @@
-using Application.Data;
 using Application.DTOs;
 using Application.Interfaces.Persistence;
+using Application.Models;
 using Domain.Entities;
 
 namespace Application.Services;
@@ -63,7 +63,8 @@ public class ClassService(IClassRepository repository)
             {
                 DayId = occurence.DayId,
                 StartPeriodId = occurence.StartPeriodId,
-            }).ToList()
+            }).ToList(),
+            PeriodPreferences = entity.PeriodPreferences
         });
     }
 
@@ -105,6 +106,7 @@ public class ClassService(IClassRepository repository)
                 DayId = occurence.DayId,
                 StartPeriodId = occurence.StartPeriodId,
             }).ToList(),
+            PeriodPreferences = createdEntity.PeriodPreferences,
         };
     }
 }

@@ -1,4 +1,4 @@
-namespace Application.Data;
+namespace Application.Models;
 
 public class Period
 {

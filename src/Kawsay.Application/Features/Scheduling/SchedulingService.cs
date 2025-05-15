@@ -1,14 +1,19 @@
-using System.Globalization;
-using Api.Scheduling;
-using Api.Scheduling.Utils;
+using Application.DTOs;
+using Application.Features.Scheduling.Algorithm;
+using Application.Features.Scheduling.Models;
+using Application.Features.Scheduling.Utils;
+using Application.Interfaces.Persistence;
+using Application.Models;
 using Domain.Entities;
-using Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
-using static System.TimeSpan;
 
-namespace Api.Services;
+namespace Application.Features.Scheduling;
 
-public class SchedulingService(KawsayDbContext context)
+public class SchedulingService(
+    ITimetableRepository timetableRepository,
+    IClassRepository classRepository,
+    ITeacherRepository teacherRepository,
+    IClassOccurrenceRepository classOccurrenceRepository
+    )
 {
     public const int ClassEntityIdOffset = 10000;
 
@@ -17,19 +22,39 @@ public class SchedulingService(KawsayDbContext context)
         Console.WriteLine($"Starting schedule generation for timetable ID: {timetableId}");
 
         // Gather data from database
-        var timetable = await context.Timetables
-            .Include(t => t.Days)
-            .Include(t => t.Periods)
-            .FirstOrDefaultAsync(t => t.Id == timetableId);
+        var timetable = await timetableRepository.GetByIdAsync(timetableId);
         if (timetable == null) throw new ArgumentException($"Timetable with ID {timetableId} not found.");
-        var classesToSchedule = await context.Classes
-            .Include(c => c.Course)
-            .Include(c => c.Teacher)
-            .Include(c => c.ClassOccurrences)
-            .Where(c => c.TimetableId == timetableId)
-            .Where(c => c.Frequency > 0 && c.Length > 0)
-            .ToListAsync();
-        var allTeachers = await context.Teachers.ToListAsync();
+
+        var classEntities = await classRepository.GetAllAsync(timetableId);
+        if (!classEntities.Any()) throw new ArgumentException($"No classes found for timetable ID {timetableId}.");
+        var classesToSchedule = classEntities.Select(entity => new Class
+        {
+            Id = entity.Id,
+            TimetableId = entity.TimetableId,
+            CourseDto = new CourseDto
+            {
+                Id = entity.Course.Id,
+                Name = entity.Course.Name,
+                Code = entity.Course.Code,
+            },
+            TeacherDto = new TeacherDto
+            {
+                Id = entity.Teacher.Id,
+                Name = entity.Teacher.Name,
+                Type = entity.Teacher.Type,
+            },
+            Length = entity.Length,
+            Frequency = entity.Frequency,
+            ClassOccurrences = entity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
+            {
+                DayId = occurence.DayId,
+                StartPeriodId = occurence.StartPeriodId,
+            }).ToList(),
+            PeriodPreferences = entity.PeriodPreferences,
+        }).ToList();
+        
+        var allTeachers = await teacherRepository.GetAllAsync();
+        if (!allTeachers.Any()) throw new ArgumentException($"No teachers found in database.");
 
         // Populate list of scheduling entities
         var allSchedulingEntities = new List<SchedulingEntity>();
@@ -43,7 +68,7 @@ public class SchedulingService(KawsayDbContext context)
         allSchedulingEntities.AddRange(classesToSchedule.Select(lecture =>
             new SchedulingEntity(
                 lecture.Id + ClassEntityIdOffset,
-                $"Class {lecture.Id} ({lecture.Course.Code})",
+                $"Class {lecture.Id} ({lecture.CourseDto.Code})",
                 timetable.Days.Count,
                 timetable.Periods.Count
             )));
@@ -72,7 +97,7 @@ public class SchedulingService(KawsayDbContext context)
         while (enumerator.MoveNext() && attempts < maxAttempts)
         {
             var currentReq = enumerator.Current;
-            if (!SchedulingAlgorithm.Handler(currentReq, allSchedulingEntities, timetable.Days.Count,
+            if (!YuleAlgorithm.Handler(currentReq, allSchedulingEntities, timetable.Days.Count,
                     timetable.Periods.Count))
             {
                 Console.WriteLine(
@@ -86,7 +111,7 @@ public class SchedulingService(KawsayDbContext context)
             else
             {
                 Console.WriteLine(
-                    $"Successfully scheduled requirement for S=[{string.Join(",", currentReq.EntitiesList)}]. Results: {currentReq.AssignedTimeslotList.TimeslotDict.Count} occurrences scheduled.");
+                    $"Successfully scheduled requirement for S=[{string.Join(",", currentReq.EntitiesList)}]. Results: {currentReq.AssignedTimeslotList.Count} occurrences scheduled.");
             }
         }
 
@@ -101,14 +126,7 @@ public class SchedulingService(KawsayDbContext context)
         // Store generated schedule
         //
 
-        // Cleanup class old period preferences
-        var classIdsToSchedule = classesToSchedule.Select(c => c.Id).ToList();
-        var existingOccurrences = await context.PeriodPreferences
-            .Where(o => classIdsToSchedule.Contains(o.ClassId))
-            .ToListAsync();
-        context.PeriodPreferences.RemoveRange(existingOccurrences);
-
-        var newOccurrences = new List<ClassOccurrence>();
+        var newOccurrences = new List<ClassOccurrenceEntity>();
         var map = new Dictionary<int, List<int>>();
         foreach (var day in timetable.Days)
         {
@@ -116,7 +134,6 @@ public class SchedulingService(KawsayDbContext context)
         }
 
         var mapHelper = new IndexIdMapHelper(timetable.Days.Count, timetable.Periods.Count, map);
-
         foreach (var requirement in currentDocument)
         {
             var classEntitySchedulingId = requirement.EntitiesList.FirstOrDefault(id => id >= ClassEntityIdOffset);
@@ -128,14 +145,13 @@ public class SchedulingService(KawsayDbContext context)
             }
 
             var classEntityId = classEntitySchedulingId - ClassEntityIdOffset;
-            foreach (var resultPair in requirement.AssignedTimeslotList.TimeslotDict.Values)
+            foreach (var resultPair in requirement.AssignedTimeslotList)
             {
-                var pair = mapHelper.GetId(new Pair(resultPair[1], resultPair[1]));
+                var pair = mapHelper.GetId(resultPair);
                 var dayIndex = pair.A;
                 var periodIndex = pair.B;
-                newOccurrences.Add(new ClassOccurrence 
+                newOccurrences.Add(new ClassOccurrenceEntity
                 {
-                    
                     ClassId = classEntityId,
                     DayId = dayIndex,
                     StartPeriodId = periodIndex
@@ -143,11 +159,10 @@ public class SchedulingService(KawsayDbContext context)
             }
 
             Console.WriteLine(
-                $"Created {requirement.AssignedTimeslotList.TimeslotDict.Count} new occurrences for Class Entity ID {classEntityId}.");
+                $"Created {requirement.AssignedTimeslotList.Count} new occurrences for Class Entity ID {classEntityId}.");
         }
 
-        context.ClassOccurrences.AddRange(newOccurrences);
-        await context.SaveChangesAsync();
+        classOccurrenceRepository.AddRangeAsync(newOccurrences);
         Console.WriteLine(
             $"Finished schedule generation for timetable ID: {timetableId}. Overall success: {attempts < maxAttempts}");
         return attempts < maxAttempts;

@@ -1,5 +1,7 @@
-using Api.Scheduling;
-using Api.Services;
+using Application.DTOs;
+using Application.Features.Scheduling;
+using Application.Features.Scheduling.Models;
+using Application.Models;
 using Domain.Entities;
 
 namespace Kawsay.UnitTests.Scheduling;
@@ -50,15 +52,26 @@ public class SchedulingDocumentFactoryTest
                 StartPeriodId = 5
             },
         };
-        var classesToSchedule = new List<ClassEntity>
+        var classesToSchedule = new List<Class>
         {
             new()
             {
                 Id = classId,
-                TeacherId = 0,
+                TeacherDto = new TeacherDto
+                {
+                    Id = 0,
+                    Name = "Teacher",
+                    Type = "Professor"
+                },
+                CourseDto = new CourseDto
+                {
+                    Id = 1,
+                    Name = "Course",
+                    Code = "123456789"
+                },
                 Frequency = 3,
                 Length = 4,
-                PeriodPreferences = periodPreferences,
+                PeriodPreferences = periodPreferences
             }
         };
         var allSchedulingEntities = new List<SchedulingEntity>()

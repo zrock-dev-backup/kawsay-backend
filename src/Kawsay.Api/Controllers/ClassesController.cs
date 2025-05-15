@@ -41,6 +41,10 @@ public class ClassesController(
             {
                 StartPeriodId = o.StartPeriodId,
                 DayId = o.DayId,
+            }).ToList(),
+            PeriodPreferences = lecture.PeriodPreferences.Select(p => new PeriodPreferencesDto
+            {
+                StartPeriodId = p.StartPeriodId
             }).ToList()
         }).ToList();
 
@@ -128,7 +132,6 @@ public class ClassesController(
 
 
         var createdClassEntity = await classService.CreateClassAsync(request);
-
         var createdClassDto = new ClassDto
         {
             Id = createdClassEntity.Id,
@@ -151,7 +154,11 @@ public class ClassesController(
             {
                 StartPeriodId = o.StartPeriodId,
                 DayId = o.DayId,
-            }).ToList()
+            }).ToList(),
+            PeriodPreferences = createdClassEntity.PeriodPreferences.Select(p => new PeriodPreferencesDto
+            {
+                StartPeriodId = p.StartPeriodId,
+            }).ToList(),
         };
 
         return CreatedAtAction(nameof(GetClass), new { id = createdClassDto.Id }, createdClassDto);

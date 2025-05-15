@@ -1,4 +1,4 @@
-namespace Api.Scheduling;
+namespace Application.Features.Scheduling.Models;
 
 public class ScheduledTimeslotResult
 {

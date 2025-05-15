@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Api.Scheduling;
+namespace Application.Features.Scheduling.Models;
 
 public class SchedulingMatrix
 {

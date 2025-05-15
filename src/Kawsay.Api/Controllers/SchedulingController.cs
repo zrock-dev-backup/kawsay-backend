@@ -1,4 +1,4 @@
-using Api.Services;
+using Application.Features.Scheduling;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;

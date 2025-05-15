@@ -1,4 +1,4 @@
-namespace Api.Scheduling.Utils;
+namespace Application.Features.Scheduling.Models;
 
 public class Pair(int a, int b)
 {

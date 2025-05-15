@@ -1,4 +1,6 @@
-namespace Api.Scheduling.Utils;
+using Application.Features.Scheduling.Models;
+
+namespace Application.Features.Scheduling.Utils;
 
 public class IndexIdMapHelper(int amntDays, int amntPeriods, Dictionary<int, List<int>> timetableIds)
 {

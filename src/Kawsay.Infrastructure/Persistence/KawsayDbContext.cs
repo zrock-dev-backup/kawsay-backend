@@ -13,7 +13,7 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
     public DbSet<TimetablePeriodEntity> TimetablePeriods { get; set; }
     public DbSet<ClassEntity> Classes { get; set; }
     public DbSet<PeriodPreferenceEntity> PeriodPreferences { get; set; }
-    public DbSet<ClassOccurrence> ClassOccurrences { get; set; }
+    public DbSet<ClassOccurrenceEntity> ClassOccurrences { get; set; }
 
     // Relationship configurations
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -55,13 +55,13 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             .HasForeignKey(o => o.StartPeriodId)
             .OnDelete(DeleteBehavior.Restrict);
         
-        modelBuilder.Entity<ClassOccurrence>()
+        modelBuilder.Entity<ClassOccurrenceEntity>()
             .HasOne(o => o.StartPeriod)
             .WithMany(period => period.Occurrences)
             .HasForeignKey(o => o.StartPeriodId)
             .OnDelete(DeleteBehavior.Restrict);
         
-        modelBuilder.Entity<ClassOccurrence>()
+        modelBuilder.Entity<ClassOccurrenceEntity>()
             .HasOne(o => o.DayEntity)
             .WithMany(period => period.Occurrences)
             .HasForeignKey(o => o.DayId)

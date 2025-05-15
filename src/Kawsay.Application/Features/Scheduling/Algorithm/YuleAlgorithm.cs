@@ -1,6 +1,8 @@
-namespace Api.Scheduling;
+using Application.Features.Scheduling.Models;
 
-public static class SchedulingAlgorithm
+namespace Application.Features.Scheduling.Algorithm;
+
+public static class YuleAlgorithm
 {
     public static readonly List<string> DayOrder =
         ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -63,7 +65,7 @@ public static class SchedulingAlgorithm
                 if (ValidateLineRequirementAvailability(dayIndex, periodIndex, requirementLine, entities))
                 {
                     UpdateEntitiesAvailability(dayIndex, periodIndex, requirementLine, entities);
-                    requirementLine.AssignedTimeslotList.Add(dayIndex, periodIndex);
+                    requirementLine.AssignedTimeslotList.Add(new Pair(dayIndex, periodIndex));
                     return true;
                 }
         return false;
