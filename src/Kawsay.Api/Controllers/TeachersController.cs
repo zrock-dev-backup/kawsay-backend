@@ -1,38 +1,24 @@
 using Api.DTOs;
+using Application.Interfaces.Persistence;
 using Domain.Entities;
-using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("kawsay/[controller]")]
-public class TeachersController : ControllerBase
+public class TeachersController(ITeacherRepository repository) : ControllerBase
 {
-    private readonly KawsayDbContext _context;
-
-    public TeachersController(KawsayDbContext context)
-    {
-        _context = context;
-    }
-
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Teacher>>> GetTeachers()
     {
-        var teachers = await _context.Teachers
-            .Select(t => new Teacher { Id = t.Id, Name = t.Name, Type = t.Type })
-            .ToListAsync();
-        return Ok(teachers);
+        return Ok(await repository.GetAllAsync());
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<Teacher>> GetTeacher(int id)
     {
-        var teacher = await _context.Teachers
-            .Where(t => t.Id == id)
-            .Select(t => new Teacher { Id = t.Id, Name = t.Name, Type = t.Type })
-            .FirstOrDefaultAsync();
+        var teacher = await repository.GetByIdAsync(id);
         if (teacher == null) return NotFound();
         return Ok(teacher);
     }
@@ -43,18 +29,11 @@ public class TeachersController : ControllerBase
         if (!ModelState.IsValid) return BadRequest(ModelState);
         if (teacherDto.Type != "Professor" && teacherDto.Type != "Faculty Practitioner")
             return BadRequest(new { message = "Invalid teacher type. Must be 'Professor' or 'Faculty Practitioner'." });
-
-
         var teacherEntity = new TeacherEntity { Name = teacherDto.Name, Type = teacherDto.Type };
-
-
-        _context.Teachers.Add(teacherEntity);
-        await _context.SaveChangesAsync();
-
+        await repository.AddAsync(teacherEntity);
 
         var createdTeacherDto = new Teacher
             { Id = teacherEntity.Id, Name = teacherEntity.Name, Type = teacherEntity.Type };
-
         return CreatedAtAction(nameof(GetTeacher), new { id = createdTeacherDto.Id }, createdTeacherDto);
     }
 }
