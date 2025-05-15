@@ -1,45 +1,46 @@
-using Application.DTOs;
-using Application.Interfaces.Persistence;
-using Domain.Entities;
+using Api.Data;
+using Application.Data;
+using Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("kawsay/[controller]")]
-public class TimetableController(ITimetableRepository repository) : ControllerBase
+public class TimetableController(TimetableService service) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<TimetableStructure>> CreateTimetable([FromBody] CreateTimetableRequest request)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
         if (string.IsNullOrWhiteSpace(request.Name)) return BadRequest(new { message = "Timetable name is required." });
-        if (request.Days == null || request.Days.Count == 0)
+        if (request.Days.Count == 0)
             return BadRequest(new { message = "At least one day is required." });
-        if (request.Periods == null || request.Periods.Count == 0)
+        if (request.Periods.Count == 0)
             return BadRequest(new { message = "At least one period is required." });
 
-        var timetableEntity = new TimetableEntity
+        var timetable = new Timetable 
         {
             Name = request.Name,
-            Days = request.Days.Select(d => new TimetableDayEntity { Name = d }).ToList(),
-            Periods = request.Periods.Select(p => new TimetablePeriodEntity
+            Days = request.Days.Select(dayName => new Day { Name = dayName }).ToList(),
+            Periods = request.Periods.Select(period => new Period
             {
-                Start = p.Start,
-                End = p.End
+                Start = period.Start,
+                End = period.End
             }).ToList()
         };
-        await repository.AddAsync(timetableEntity);
+        var createdTimetable =  await service.CreateTimetableAsync(timetable);
+        
         var createdTimetableDto = new TimetableStructure
         {
-            Id = timetableEntity.Id,
-            Name = timetableEntity.Name,
-            Days = timetableEntity.Days.Select(d => new TimetableDay
+            Id = createdTimetable.Id,
+            Name = createdTimetable.Name,
+            Days = createdTimetable.Days.Select(d => new TimetableDay
             {
                 Id = d.Id,
                 Name = d.Name
             }).ToList(),
-            Periods = timetableEntity.Periods
+            Periods = createdTimetable.Periods
                 .Select(p => new TimetablePeriod
                 {
                     Id = p.Id,
@@ -53,7 +54,7 @@ public class TimetableController(ITimetableRepository repository) : ControllerBa
     [HttpGet("{id:int}")]
     public async Task<ActionResult<TimetableStructure>> GetTimetable(int id)
     {
-        var timetable = await repository.GetByIdAsync(id);
+        var timetable = await service.GetByIdAsync(id);
         if (timetable == null) return NotFound();
         var timetableDto = new TimetableStructure
         {
@@ -80,7 +81,7 @@ public class TimetableController(ITimetableRepository repository) : ControllerBa
     [Route("/kawsay/timetables")]
     public async Task<ActionResult<IEnumerable<TimetableStructure>>> GetTimetables()
     {
-        var timetables = await repository.GetAllAsync();
+        var timetables = await service.GetAllAsync();
         return Ok(timetables.Select(t => new TimetableStructure { Id = t.Id, Name = t.Name }));
     }
 }
