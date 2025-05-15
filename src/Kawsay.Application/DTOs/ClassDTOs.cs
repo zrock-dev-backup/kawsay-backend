@@ -1,10 +1,10 @@
-namespace Api.DTOs;
+namespace Application.DTOs;
 
 public class ClassDto
 {
     public int Id { get; set; }
     public int TimetableId { get; set; }
-    public Course Course { get; set; } = new();
+    public CourseDto CourseDto { get; set; } = new();
     public Teacher Teacher { get; set; }
     public int Length { get; set; }
     public int Frequency { get; set; }

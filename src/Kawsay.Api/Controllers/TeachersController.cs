@@ -1,4 +1,4 @@
-using Api.DTOs;
+using Application.DTOs;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;

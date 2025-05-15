@@ -1,4 +1,4 @@
-using Api.DTOs;
+using Application.DTOs;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +27,7 @@ public class ClassesController(
             TimetableId = cls.TimetableId,
             Frequency = cls.Frequency,
             Length = cls.Length,
-            Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
+            CourseDto = new CourseDto { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
             Teacher = new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
             ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto
             {
@@ -48,7 +48,7 @@ public class ClassesController(
         {
             Id = cls.Id,
             TimetableId = cls.TimetableId,
-            Course = new Course
+            CourseDto = new CourseDto
             {
                 Id = cls.Course.Id,
                 Name = cls.Course.Name,
@@ -144,7 +144,7 @@ public class ClassesController(
             TimetableId = createdClassEntity.TimetableId,
             Length = createdClassEntity.Length,
             Frequency = createdClassEntity.Frequency,
-            Course = new Course
+            CourseDto = new CourseDto
             {
                 Id = createdClassEntity.Course.Id,
                 Name = createdClassEntity.Course.Name,

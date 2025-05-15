@@ -1,4 +1,4 @@
-namespace Api.DTOs;
+namespace Application.DTOs;
 
 public class ClassOccurrenceDto
 {

@@ -1,5 +1,6 @@
 using Api.Services;
 using Application.Interfaces.Persistence;
+using Application.Services;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,8 @@ builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
+
+builder.Services.AddScoped<CourseService>();
 
 builder.Services.AddCors(options =>
 {
