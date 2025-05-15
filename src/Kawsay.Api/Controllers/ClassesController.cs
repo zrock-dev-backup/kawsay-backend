@@ -1,23 +1,25 @@
 using Api.DTOs;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
-using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("kawsay")]
-public class ClassesController(IClassRepository repository, KawsayDbContext context) : ControllerBase
+public class ClassesController(
+    IClassRepository classRepository,
+    ITeacherRepository teacherRepository,
+    ITimetableRepository timetableRepository,
+    ICourseRepository courseRepository) : ControllerBase
 {
     [HttpGet("classes")]
     public async Task<ActionResult<IEnumerable<ClassDto>>> GetClassesByTimetable([FromQuery] int timetableId)
     {
-        var timetableExists = await context.Timetables.AnyAsync(t => t.Id == timetableId);
-        if (!timetableExists) return NotFound(new { message = $"Timetable with ID {timetableId} not found." });
+        var timetable = await timetableRepository.GetByIdAsync(timetableId);
+        if (timetable == null) return NotFound(new { message = $"Timetable with ID {timetableId} not found." });
 
-        var classes = await repository.GetAllAsync();
+        var classes = await classRepository.GetAllAsync();
 
         var classDtos = classes.Select(cls => new ClassDto
         {
@@ -40,7 +42,7 @@ public class ClassesController(IClassRepository repository, KawsayDbContext cont
     [HttpGet("class/{id}")]
     public async Task<ActionResult<ClassDto>> GetClass(int id)
     {
-        var cls = await repository.GetByIdAsync(id);
+        var cls = await classRepository.GetByIdAsync(id);
         if (cls == null) return NotFound();
         var classDto = new ClassDto
         {
@@ -58,7 +60,7 @@ public class ClassesController(IClassRepository repository, KawsayDbContext cont
                 Name = cls.Teacher.Name,
                 Type = cls.Teacher.Type
             },
-            ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto() 
+            ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto()
             {
                 DayId = o.DayId,
                 StartPeriodId = o.StartPeriodId,
@@ -85,18 +87,14 @@ public class ClassesController(IClassRepository repository, KawsayDbContext cont
         if (request.PeriodPreferencesList.Count == 0 || request.Frequency == 0 || request.Length == 0)
             return BadRequest(new { message = "A field has a 0 value" });
 
-        var course = await context.Courses.FindAsync(request.CourseId);
+        var course = await courseRepository.GetByIdAsync(request.CourseId);
         if (course == null) return BadRequest(new { message = $"Course with ID {request.CourseId} not found." });
 
-        var teacher = await context.Teachers.FindAsync(request.TeacherId);
+        var teacher = await teacherRepository.GetByIdAsync(request.TeacherId);
         if (teacher == null)
             return BadRequest(new { message = $"Teacher with ID {request.TeacherId} not found." });
 
-        var timetable = await context.Timetables
-            .Include(t => t.Days)
-            .Include(t => t.Periods)
-            .Where(t => t.Id == request.TimetableId)
-            .FirstOrDefaultAsync();
+        var timetable = await timetableRepository.GetByIdAsync(request.TimetableId);
         if (timetable == null)
             return BadRequest(new { message = $"Timetable with ID {request.TimetableId} not found." });
 
@@ -132,14 +130,14 @@ public class ClassesController(IClassRepository repository, KawsayDbContext cont
             }).ToList()
         };
 
-        await repository.AddAsync(classEntity);
-        var createdClassEntity = await repository.GetByIdAsync(classEntity.Id);
+        await classRepository.AddAsync(classEntity);
+        var createdClassEntity = await classRepository.GetByIdAsync(classEntity.Id);
 
         if (createdClassEntity == null)
         {
             return BadRequest(new { message = "Class creation failed." });
         }
-        
+
         var createdClassDto = new ClassDto
         {
             Id = createdClassEntity.Id,
