@@ -20,6 +20,7 @@ builder.Services.AddScoped<SchedulingService>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
+builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
 
 builder.Services.AddCors(options =>
 {
