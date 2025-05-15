@@ -1,39 +1,34 @@
 using Application.DTOs;
-using Application.Interfaces.Persistence;
-using Domain.Entities;
+using Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("kawsay/[controller]")]
-public class TeachersController(ITeacherRepository repository) : ControllerBase
+public class TeachersController(TeacherService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Teacher>>> GetTeachers()
+    public async Task<ActionResult<IEnumerable<TeacherDto>>> GetTeachers()
     {
-        return Ok(await repository.GetAllAsync());
+        return Ok(await service.GetAllAsync());
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Teacher>> GetTeacher(int id)
+    public async Task<ActionResult<TeacherDto>> GetTeacher(int id)
     {
-        var teacher = await repository.GetByIdAsync(id);
+        var teacher = await service.GetByIdAsync(id);
         if (teacher == null) return NotFound();
         return Ok(teacher);
     }
 
     [HttpPost]
-    public async Task<ActionResult<Teacher>> CreateTeacher([FromBody] Teacher teacherDto)
+    public async Task<ActionResult<TeacherDto>> CreateTeacher([FromBody] TeacherDto createTeacherRequest)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-        if (teacherDto.Type != "Professor" && teacherDto.Type != "Faculty Practitioner")
+        if (createTeacherRequest.Type != "Professor" && createTeacherRequest.Type != "Faculty Practitioner")
             return BadRequest(new { message = "Invalid teacher type. Must be 'Professor' or 'Faculty Practitioner'." });
-        var teacherEntity = new TeacherEntity { Name = teacherDto.Name, Type = teacherDto.Type };
-        await repository.AddAsync(teacherEntity);
-
-        var createdTeacherDto = new Teacher
-            { Id = teacherEntity.Id, Name = teacherEntity.Name, Type = teacherEntity.Type };
+        var createdTeacherDto =  await service.CreateCourseAsync(createTeacherRequest);
         return CreatedAtAction(nameof(GetTeacher), new { id = createdTeacherDto.Id }, createdTeacherDto);
     }
 }

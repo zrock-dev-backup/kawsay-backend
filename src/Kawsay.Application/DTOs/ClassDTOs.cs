@@ -5,7 +5,7 @@ public class ClassDto
     public int Id { get; set; }
     public int TimetableId { get; set; }
     public CourseDto CourseDto { get; set; } = new();
-    public Teacher Teacher { get; set; }
+    public TeacherDto TeacherDto { get; set; }
     public int Length { get; set; }
     public int Frequency { get; set; }
     public ICollection<ClassOccurrenceDto> ClassOccurrences { get; set; } = new List<ClassOccurrenceDto>();

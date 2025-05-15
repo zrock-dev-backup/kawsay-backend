@@ -24,6 +24,7 @@ builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
 
 builder.Services.AddScoped<CourseService>();
+builder.Services.AddScoped<TeacherService>();
 
 builder.Services.AddCors(options =>
 {

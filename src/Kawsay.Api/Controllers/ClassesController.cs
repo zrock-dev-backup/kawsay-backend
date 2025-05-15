@@ -28,7 +28,7 @@ public class ClassesController(
             Frequency = cls.Frequency,
             Length = cls.Length,
             CourseDto = new CourseDto { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
-            Teacher = new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
+            TeacherDto = new TeacherDto { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
             ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto
             {
                 StartPeriodId = o.StartPeriodId,
@@ -54,7 +54,7 @@ public class ClassesController(
                 Name = cls.Course.Name,
                 Code = cls.Course.Code
             },
-            Teacher = new Teacher
+            TeacherDto = new TeacherDto
             {
                 Id = cls.Teacher.Id,
                 Name = cls.Teacher.Name,
@@ -150,7 +150,7 @@ public class ClassesController(
                 Name = createdClassEntity.Course.Name,
                 Code = createdClassEntity.Course.Code
             },
-            Teacher = new Teacher
+            TeacherDto = new TeacherDto
             {
                 Id = createdClassEntity.Teacher.Id,
                 Name = createdClassEntity.Teacher.Name,
