@@ -16,9 +16,15 @@ public class ClassRepository(KawsayDbContext context) : IClassRepository
             .FirstOrDefaultAsync();
     }
 
-    public async Task<IEnumerable<ClassEntity>> GetAllAsync()
+    public async Task<IEnumerable<ClassEntity>> GetAllAsync(int timetableId)
     {
-        return await context.Classes.ToListAsync();
+        return await context.Classes
+            .Include(c => c.Course)
+            .Include(c => c.Teacher)
+            .Include(c => c.ClassOccurrences)
+            .Include(c => c.PeriodPreferences)
+            .Where(c => c.TimetableId == timetableId)
+            .ToListAsync();
     }
 
     public async Task<ClassEntity> AddAsync(ClassEntity lecture)

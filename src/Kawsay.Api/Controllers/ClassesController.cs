@@ -1,6 +1,5 @@
 using Application.DTOs;
-using Application.Interfaces.Persistence;
-using Domain.Entities;
+using Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -8,28 +7,37 @@ namespace Api.Controllers;
 [ApiController]
 [Route("kawsay")]
 public class ClassesController(
-    IClassRepository classRepository,
-    ITeacherRepository teacherRepository,
-    ITimetableRepository timetableRepository,
-    ICourseRepository courseRepository) : ControllerBase
+    ClassService classService,
+    TeacherService teacherService,
+    TimetableService timetableService,
+    CourseService courseService) : ControllerBase
 {
     [HttpGet("classes")]
     public async Task<ActionResult<IEnumerable<ClassDto>>> GetClassesByTimetable([FromQuery] int timetableId)
     {
-        var timetable = await timetableRepository.GetByIdAsync(timetableId);
+        var timetable = await timetableService.GetByIdAsync(timetableId);
         if (timetable == null) return NotFound(new { message = $"Timetable with ID {timetableId} not found." });
 
-        var classes = await classRepository.GetAllAsync();
-
-        var classDtos = classes.Select(cls => new ClassDto
+        var classes = await classService.GetAllAsync(timetableId);
+        var classDtos = classes.Select(lecture => new ClassDto
         {
-            Id = cls.Id,
-            TimetableId = cls.TimetableId,
-            Frequency = cls.Frequency,
-            Length = cls.Length,
-            CourseDto = new CourseDto { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
-            TeacherDto = new TeacherDto { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
-            ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto
+            Id = lecture.Id,
+            TimetableId = lecture.TimetableId,
+            Frequency = lecture.Frequency,
+            Length = lecture.Length,
+            CourseDto = new CourseDto
+            {
+                Id = lecture.CourseDto.Id,
+                Name = lecture.CourseDto.Name,
+                Code = lecture.CourseDto.Code
+            },
+            TeacherDto = new TeacherDto
+            {
+                Id = lecture.TeacherDto.Id,
+                Name = lecture.TeacherDto.Name,
+                Type = lecture.TeacherDto.Type
+            },
+            ClassOccurrences = lecture.ClassOccurrences.Select(o => new ClassOccurrenceDto
             {
                 StartPeriodId = o.StartPeriodId,
                 DayId = o.DayId,
@@ -39,10 +47,10 @@ public class ClassesController(
         return Ok(classDtos);
     }
 
-    [HttpGet("class/{id}")]
+    [HttpGet("class/{id:int}")]
     public async Task<ActionResult<ClassDto>> GetClass(int id)
     {
-        var cls = await classRepository.GetByIdAsync(id);
+        var cls = await classService.GetByIdAsync(id);
         if (cls == null) return NotFound();
         var classDto = new ClassDto
         {
@@ -50,17 +58,17 @@ public class ClassesController(
             TimetableId = cls.TimetableId,
             CourseDto = new CourseDto
             {
-                Id = cls.Course.Id,
-                Name = cls.Course.Name,
-                Code = cls.Course.Code
+                Id = cls.CourseDto.Id,
+                Name = cls.CourseDto.Name,
+                Code = cls.CourseDto.Code
             },
             TeacherDto = new TeacherDto
             {
-                Id = cls.Teacher.Id,
-                Name = cls.Teacher.Name,
-                Type = cls.Teacher.Type
+                Id = cls.TeacherDto.Id,
+                Name = cls.TeacherDto.Name,
+                Type = cls.TeacherDto.Type
             },
-            ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto()
+            ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto
             {
                 DayId = o.DayId,
                 StartPeriodId = o.StartPeriodId,
@@ -87,14 +95,14 @@ public class ClassesController(
         if (request.PeriodPreferencesList.Count == 0 || request.Frequency == 0 || request.Length == 0)
             return BadRequest(new { message = "A field has a 0 value" });
 
-        var course = await courseRepository.GetByIdAsync(request.CourseId);
+        var course = await courseService.GetCourseByIdAsync(request.CourseId);
         if (course == null) return BadRequest(new { message = $"Course with ID {request.CourseId} not found." });
 
-        var teacher = await teacherRepository.GetByIdAsync(request.TeacherId);
+        var teacher = await teacherService.GetByIdAsync(request.TeacherId);
         if (teacher == null)
             return BadRequest(new { message = $"Teacher with ID {request.TeacherId} not found." });
 
-        var timetable = await timetableRepository.GetByIdAsync(request.TimetableId);
+        var timetable = await timetableService.GetByIdAsync(request.TimetableId);
         if (timetable == null)
             return BadRequest(new { message = $"Timetable with ID {request.TimetableId} not found." });
 
@@ -107,36 +115,19 @@ public class ClassesController(
             });
         }
 
-        foreach (var periodPreference in request.PeriodPreferencesList)
+        foreach (var periodPreference in
+                 request.PeriodPreferencesList.Where(periodPreference =>
+                     timetable.Periods.All(p => p.Id != periodPreference.StartPeriodId)))
         {
-            if (timetable.Periods.All(p => p.Id != periodPreference.StartPeriodId))
-                return BadRequest(new
-                {
-                    message =
-                        $"Period ID {periodPreference.StartPeriodId} not found in timetable {request.TimetableId}."
-                });
-        }
-
-        var classEntity = new ClassEntity
-        {
-            TimetableId = request.TimetableId,
-            CourseId = request.CourseId,
-            TeacherId = request.TeacherId,
-            Frequency = request.Frequency,
-            Length = request.Length,
-            PeriodPreferences = request.PeriodPreferencesList.Select(o => new PeriodPreferenceEntity
+            return BadRequest(new
             {
-                StartPeriodId = o.StartPeriodId,
-            }).ToList()
-        };
-
-        await classRepository.AddAsync(classEntity);
-        var createdClassEntity = await classRepository.GetByIdAsync(classEntity.Id);
-
-        if (createdClassEntity == null)
-        {
-            return BadRequest(new { message = "Class creation failed." });
+                message =
+                    $"Period ID {periodPreference.StartPeriodId} not found in timetable {request.TimetableId}."
+            });
         }
+
+
+        var createdClassEntity = await classService.CreateClassAsync(request);
 
         var createdClassDto = new ClassDto
         {
@@ -146,15 +137,15 @@ public class ClassesController(
             Frequency = createdClassEntity.Frequency,
             CourseDto = new CourseDto
             {
-                Id = createdClassEntity.Course.Id,
-                Name = createdClassEntity.Course.Name,
-                Code = createdClassEntity.Course.Code
+                Id = createdClassEntity.CourseDto.Id,
+                Name = createdClassEntity.CourseDto.Name,
+                Code = createdClassEntity.CourseDto.Code
             },
             TeacherDto = new TeacherDto
             {
-                Id = createdClassEntity.Teacher.Id,
-                Name = createdClassEntity.Teacher.Name,
-                Type = createdClassEntity.Teacher.Type
+                Id = createdClassEntity.TeacherDto.Id,
+                Name = createdClassEntity.TeacherDto.Name,
+                Type = createdClassEntity.TeacherDto.Type
             },
             ClassOccurrences = createdClassEntity.ClassOccurrences.Select(o => new ClassOccurrenceDto()
             {
