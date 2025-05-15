@@ -1,4 +1,5 @@
 using Api.DTOs;
+using Application.Interfaces.Persistence;
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace Api.Controllers;
 
 [ApiController]
 [Route("kawsay")]
-public class ClassesController(KawsayDbContext context) : ControllerBase
+public class ClassesController(IClassRepository repository, KawsayDbContext context) : ControllerBase
 {
     [HttpGet("classes")]
     public async Task<ActionResult<IEnumerable<ClassDto>>> GetClassesByTimetable([FromQuery] int timetableId)
@@ -16,12 +17,7 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
         var timetableExists = await context.Timetables.AnyAsync(t => t.Id == timetableId);
         if (!timetableExists) return NotFound(new { message = $"Timetable with ID {timetableId} not found." });
 
-        var classes = await context.Classes
-            .Include(c => c.Course)
-            .Include(c => c.Teacher)
-            .Include(c => c.ClassOccurrences)
-            .Where(c => c.TimetableId == timetableId)
-            .ToListAsync();
+        var classes = await repository.GetAllAsync();
 
         var classDtos = classes.Select(cls => new ClassDto
         {
@@ -44,24 +40,27 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
     [HttpGet("class/{id}")]
     public async Task<ActionResult<ClassDto>> GetClass(int id)
     {
-        var cls = await context.Classes
-            .Include(c => c.Course)
-            .Include(c => c.Teacher)
-            .Include(c => c.ClassOccurrences)
-            .Where(c => c.Id == id)
-            .FirstOrDefaultAsync();
-
+        var cls = await repository.GetByIdAsync(id);
         if (cls == null) return NotFound();
-
-
         var classDto = new ClassDto
         {
             Id = cls.Id,
             TimetableId = cls.TimetableId,
-            Course = new Course { Id = cls.Course.Id, Name = cls.Course.Name, Code = cls.Course.Code },
-            Teacher = new Teacher { Id = cls.Teacher.Id, Name = cls.Teacher.Name, Type = cls.Teacher.Type },
-            PeriodPreferencesList = cls.ClassOccurrences.Select(o => new PeriodPreferencesDto
+            Course = new Course
             {
+                Id = cls.Course.Id,
+                Name = cls.Course.Name,
+                Code = cls.Course.Code
+            },
+            Teacher = new Teacher
+            {
+                Id = cls.Teacher.Id,
+                Name = cls.Teacher.Name,
+                Type = cls.Teacher.Type
+            },
+            ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto() 
+            {
+                DayId = o.DayId,
                 StartPeriodId = o.StartPeriodId,
             }).ToList()
         };
@@ -132,19 +131,18 @@ public class ClassesController(KawsayDbContext context) : ControllerBase
                 StartPeriodId = o.StartPeriodId,
             }).ToList()
         };
-        context.Classes.Add(classEntity);
-        await context.SaveChangesAsync();
 
-        var createdClassEntity = await context.Classes
-            .Include(c => c.Course)
-            .Include(c => c.Teacher)
-            .Include(c => c.ClassOccurrences)
-            .Where(c => c.Id == classEntity.Id)
-            .FirstOrDefaultAsync();
+        await repository.AddAsync(classEntity);
+        var createdClassEntity = await repository.GetByIdAsync(classEntity.Id);
 
+        if (createdClassEntity == null)
+        {
+            return BadRequest(new { message = "Class creation failed." });
+        }
+        
         var createdClassDto = new ClassDto
         {
-            Id = createdClassEntity!.Id,
+            Id = createdClassEntity.Id,
             TimetableId = createdClassEntity.TimetableId,
             Length = createdClassEntity.Length,
             Frequency = createdClassEntity.Frequency,

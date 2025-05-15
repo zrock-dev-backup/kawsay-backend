@@ -18,6 +18,7 @@ builder.Services.AddDbContext<KawsayDbContext>(options =>
 
 builder.Services.AddScoped<SchedulingService>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
+builder.Services.AddScoped<IClassRepository, ClassRepository>();
 
 builder.Services.AddCors(options =>
 {
