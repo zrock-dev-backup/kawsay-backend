@@ -65,7 +65,7 @@ public static class YuleAlgorithm
                 if (ValidateLineRequirementAvailability(dayIndex, periodIndex, requirementLine, entities))
                 {
                     UpdateEntitiesAvailability(dayIndex, periodIndex, requirementLine, entities);
-                    requirementLine.AssignedTimeslotList.Add(new Pair(dayIndex, periodIndex));
+                    requirementLine.AssignedTimeslotList.Add(new TimetablePair(dayIndex, periodIndex));
                     return true;
                 }
         return false;

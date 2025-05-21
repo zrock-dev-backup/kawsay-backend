@@ -89,7 +89,7 @@ public class SchedulingService(
         }
 
         var attempts = 0;
-        var maxAttempts = 100;
+        const int maxAttempts = 100;
         var currentDocument = new LinkedList<SchedulingRequirementLine>(requirementDocument);
         var enumerator = currentDocument.GetEnumerator();
         InitializeJcMatrices();
@@ -148,8 +148,8 @@ public class SchedulingService(
             foreach (var resultPair in requirement.AssignedTimeslotList)
             {
                 var pair = mapHelper.GetId(resultPair);
-                var dayIndex = pair.A;
-                var periodIndex = pair.B;
+                var dayIndex = pair.Day;
+                var periodIndex = pair.Period;
                 newOccurrences.Add(new ClassOccurrenceEntity
                 {
                     ClassId = classEntityId,

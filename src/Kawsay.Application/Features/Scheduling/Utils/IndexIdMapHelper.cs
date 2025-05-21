@@ -4,11 +4,11 @@ namespace Application.Features.Scheduling.Utils;
 
 public class IndexIdMapHelper(int amntDays, int amntPeriods, Dictionary<int, List<int>> timetableIds)
 {
-    private readonly Dictionary<Pair, Pair> _idMap = PopulateMap(amntDays, amntPeriods, timetableIds) ?? new Dictionary<Pair, Pair>();
+    private readonly Dictionary<TimetablePair, TimetablePair> _idMap = PopulateMap(amntDays, amntPeriods, timetableIds) ?? new Dictionary<TimetablePair, TimetablePair>();
 
-    private static Dictionary<Pair, Pair>? PopulateMap(int amntDays, int amntPeriods, Dictionary<int, List<int>> timetableIds)
+    private static Dictionary<TimetablePair, TimetablePair>? PopulateMap(int amntDays, int amntPeriods, Dictionary<int, List<int>> timetableIds)
     {
-        var map = new Dictionary<Pair, Pair>();
+        var map = new Dictionary<TimetablePair, TimetablePair>();
         if (timetableIds.Count != amntDays)
         {
             Console.WriteLine("Not enough timetable day ids");
@@ -27,7 +27,7 @@ public class IndexIdMapHelper(int amntDays, int amntPeriods, Dictionary<int, Lis
             var periodIndex = 0;
             foreach (var periodId in keyValuePair.Value)
             {
-                map.Add(new Pair(dayIndex, periodIndex), new Pair(keyValuePair.Key, periodId));
+                map.Add(new TimetablePair(dayIndex, periodIndex), new TimetablePair(keyValuePair.Key, periodId));
                 periodIndex++;
             }
             dayIndex++;
@@ -45,7 +45,7 @@ public class IndexIdMapHelper(int amntDays, int amntPeriods, Dictionary<int, Lis
         }
     }
 
-    public Pair GetId(Pair key)
+    public TimetablePair GetId(TimetablePair key)
     {
         return _idMap[key];
     }

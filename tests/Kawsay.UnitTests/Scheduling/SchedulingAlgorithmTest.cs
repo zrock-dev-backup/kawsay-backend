@@ -1,13 +1,12 @@
 using Application.Features.Scheduling.Algorithm;
 using Application.Features.Scheduling.Models;
-using Xunit;
 
-namespace kawsay.Scheduling;
+namespace Kawsay.UnitTests.Scheduling;
 
 public class SchedulingAlgorithmTest
 {
-    const int NumDays = 5;
-    const int NumPeriods = 26;
+    private const int NumDays = 5;
+    private const int NumPeriods = 26;
         
     private static SchedulingRequirementLine MakeMasterClass(List<int> ids)
     {
@@ -40,10 +39,9 @@ public class SchedulingAlgorithmTest
             }
 
             var periods = "";
-            foreach (var keyValuePair in requirementLine.AssignedTimeslotList.TimeslotDict)
+            foreach (var keyValuePair in requirementLine.AssignedTimeslotList)
             {
-                var schedule = keyValuePair.Value;
-                periods += $" [{schedule[0]}, {schedule[1]}]";
+                periods += $" [{keyValuePair.Day}, {keyValuePair.Period}]";
             }
 
             Console.WriteLine($"Entities: {name}, Periods: {periods}");

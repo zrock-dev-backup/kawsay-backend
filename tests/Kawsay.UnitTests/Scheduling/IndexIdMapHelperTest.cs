@@ -23,7 +23,7 @@ public class IndexIdMapHelperTest
         var periodId = 504;
         var dayIndex = 0;
         var periodIndex = 4;
-        Assert.Equal(new Pair(dayId, periodId), yuleMapperHelper.GetId(new Pair(dayIndex, periodIndex)));
+        Assert.Equal(new TimetablePair(dayId, periodId), yuleMapperHelper.GetId(new TimetablePair(dayIndex, periodIndex)));
     }
 
     [Fact]
@@ -41,6 +41,6 @@ public class IndexIdMapHelperTest
         var periodId = 504;
         var dayIndex = 0;
         var periodIndex = 4;
-        Assert.Equal(new Pair(dayIndex, periodIndex), yuleMapperHelper.GetId(new Pair(dayId, periodId)));
+        Assert.Equal(new TimetablePair(dayIndex, periodIndex), yuleMapperHelper.GetId(new TimetablePair(dayId, periodId)));
     }
 }

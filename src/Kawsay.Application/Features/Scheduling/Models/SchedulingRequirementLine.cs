@@ -9,7 +9,7 @@ public class SchedulingRequirementLine(
 {
     public List<int> EntitiesList { get; } = entitiesId;
     public int Frequency { get; } = frequency;
-    public List<Pair> AssignedTimeslotList { get; } = new();
+    public List<TimetablePair> AssignedTimeslotList { get; } = new();
     public List<int> PeriodPreferenceList { get; } = Enumerable.Repeat(1, numPeriods).ToList();
     public int Length { get; } = length;
     public SchedulingMatrix AvailabilityMatrix { get; set; } = new(numDays, numPeriods);

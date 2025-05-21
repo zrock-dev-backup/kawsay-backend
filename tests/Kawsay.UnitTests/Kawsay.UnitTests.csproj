@@ -24,7 +24,6 @@
     <ProjectReference Include="..\..\src\Kawsay.Api\Api.csproj" />
     <ProjectReference Include="..\..\src\Kawsay.Application\Application.csproj" />
     <ProjectReference Include="..\..\src\Kawsay.Domain\Domain.csproj" />
-    <ProjectReference Include="..\..\src\Kawsay\Api.csproj" />
   </ItemGroup>
 
 </Project>
