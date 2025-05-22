@@ -72,13 +72,14 @@ public class ClassesController(
                 Name = cls.TeacherDto.Name,
                 Type = cls.TeacherDto.Type
             },
+            Length = cls.Length,
+            Frequency = cls.Frequency,
             ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto
-            {
-                DayId = o.DayId,
-                StartPeriodId = o.StartPeriodId,
-            }).ToList()
+                {
+                    DayId = o.DayId,
+                    StartPeriodId = o.StartPeriodId,
+                }).ToList(),
         };
-
         return Ok(classDto);
     }
 
