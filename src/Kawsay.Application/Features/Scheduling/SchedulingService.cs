@@ -13,7 +13,7 @@ public class SchedulingService(
     IClassRepository classRepository,
     ITeacherRepository teacherRepository,
     IClassOccurrenceRepository classOccurrenceRepository
-    )
+)
 {
     public const int ClassEntityIdOffset = 10000;
 
@@ -27,6 +27,10 @@ public class SchedulingService(
 
         var classEntities = await classRepository.GetAllAsync(timetableId);
         if (!classEntities.Any()) throw new ArgumentException($"No classes found for timetable ID {timetableId}.");
+
+        var classIds = classEntities.Select(x => x.Id).ToList();
+        await classOccurrenceRepository.DeleteByClassIdAsync(classIds);
+
         var classesToSchedule = classEntities.Select(entity => new Class
         {
             Id = entity.Id,
@@ -45,14 +49,9 @@ public class SchedulingService(
             },
             Length = entity.Length,
             Frequency = entity.Frequency,
-            ClassOccurrences = entity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
-            {
-                DayId = occurence.DayId,
-                StartPeriodId = occurence.StartPeriodId,
-            }).ToList(),
             PeriodPreferences = entity.PeriodPreferences,
         }).ToList();
-        
+
         var allTeachers = await teacherRepository.GetAllAsync();
         if (!allTeachers.Any()) throw new ArgumentException($"No teachers found in database.");
 
