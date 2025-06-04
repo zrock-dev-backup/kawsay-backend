@@ -74,11 +74,5 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             new CourseEntity { Id = 3, Name = "Linear Algebra", Code = "MATH-201" },
             new CourseEntity { Id = 4, Name = "Calculus I", Code = "MATH-101" }
         );
-
-        modelBuilder.Entity<TeacherEntity>().HasData(
-            new TeacherEntity { Id = 1, Name = "Dave Smith", Type = "Professor" },
-            new TeacherEntity { Id = 2, Name = "Jane Doe", Type = "Faculty Practitioner" },
-            new TeacherEntity { Id = 3, Name = "Alice Johnson", Type = "Professor" }
-        );
     }
 }
