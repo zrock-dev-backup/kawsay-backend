@@ -8,23 +8,25 @@ public class TeacherService(ITeacherRepository repository)
 {
     public async Task<TeacherDto?> GetByIdAsync(int id)
     {
-        var courseEntity = await repository.GetByIdAsync(id);
-        return courseEntity == null
+        var entity = await repository.GetByIdAsync(id);
+        return entity == null
             ? null
             : new TeacherDto
             {
-                Id = courseEntity.Id,
-                Name = courseEntity.Name,
+                Id = entity.Id,
+                Name = entity.Name,
+                Type = entity.Type,
             };
     }
 
     public async Task<IEnumerable<TeacherDto>> GetAllAsync()
     {
-        var courseEntities = await repository.GetAllAsync();
-        return courseEntities.Select(e => new TeacherDto
+        var entity = await repository.GetAllAsync();
+        return entity.Select(teacher => new TeacherDto
         {
-            Id = e.Id,
-            Name = e.Name,
+            Id = teacher.Id,
+            Name = teacher.Name,
+            Type = teacher.Type,
         });
     }
 
