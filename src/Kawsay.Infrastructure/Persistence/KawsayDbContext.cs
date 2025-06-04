@@ -66,13 +66,5 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             .WithMany(period => period.Occurrences)
             .HasForeignKey(o => o.DayId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        // Seed data
-        modelBuilder.Entity<CourseEntity>().HasData(
-            new CourseEntity { Id = 1, Name = "Programming 1", Code = "CSPR-101" },
-            new CourseEntity { Id = 2, Name = "Programming 2", Code = "CSPR-124" },
-            new CourseEntity { Id = 3, Name = "Linear Algebra", Code = "MATH-201" },
-            new CourseEntity { Id = 4, Name = "Calculus I", Code = "MATH-101" }
-        );
     }
 }
