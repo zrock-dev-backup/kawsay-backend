@@ -12,19 +12,24 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         mkKawsayPackage = { environment }:
-          pkgs.buildDotnetModule {
+          pkgs.buildDotnetModule rec {
             pname = "kawsay-backend-${environment}";
             version = "0.1.0";
             src = ./.;
-			dotnetTools = [ pkgs.dotnet-ef ];
+            dotnetTools = [ pkgs.dotnet-ef ];
             dotnet-sdk = pkgs.dotnetCorePackages.sdk_8_0;
-			dotnet-runtime = pkgs.dotnetCorePackages.aspnetcore_8_0;
+            dotnet-runtime = pkgs.dotnetCorePackages.aspnetcore_8_0;
             nugetDeps = ./deps.json;
-			buildType = "Release";
+            buildType = "Release";
             solutionFile = "Kawsay.sln";
             projectFile = "src/Kawsay.Api/Api.csproj";
             executables = [ "Api" ];
-			makeWrapperArgs = [ "--set" "ASPNETCORE_ENVIRONMENT" "${environment}" ];
+
+            makeWrapperArgs = [
+              "--set" "ASPNETCORE_ENVIRONMENT" "${environment}"
+              "--add-flags" "--contentRoot"
+              "--add-flags" "${placeholder "out"}/lib/${pname}"
+            ];
           };
 
       in {
@@ -48,7 +53,7 @@
             ];
             text = ''
               echo "clean up"
-			  rm -fr out/
+              rm -fr out/
               echo "Restoring NuGet packages..."
               dotnet restore --packages out
               echo "Generating deps.json..."
@@ -62,7 +67,7 @@
           buildInputs = with pkgs; [
             dotnetCorePackages.sdk_8_0
             nuget-to-json
-			pkgs.dotnet-ef
+                        pkgs.dotnet-ef
           ];
 
           shellHook = ''
