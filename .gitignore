@@ -211,3 +211,4 @@ mono_crash.*
 files
 *.out
 *.mdf
+out/
