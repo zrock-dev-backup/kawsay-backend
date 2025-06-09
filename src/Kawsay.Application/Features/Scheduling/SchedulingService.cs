@@ -1,10 +1,9 @@
 using Application.DTOs;
 using Application.Features.Scheduling.Algorithm;
 using Application.Features.Scheduling.Models;
-using Application.Features.Scheduling.Utils;
 using Application.Interfaces.Persistence;
 using Application.Models;
-using Domain.Entities;
+using Application.Services;
 
 namespace Application.Features.Scheduling;
 
@@ -12,7 +11,8 @@ public class SchedulingService(
     ITimetableRepository timetableRepository,
     IClassRepository classRepository,
     ITeacherRepository teacherRepository,
-    IClassOccurrenceRepository classOccurrenceRepository
+    IClassOccurrenceRepository classOccurrenceRepository,
+    CalendarizationService calendarizationService
 )
 {
     public const int ClassEntityIdOffset = 10000;
@@ -21,7 +21,6 @@ public class SchedulingService(
     {
         Console.WriteLine($"Starting schedule generation for timetable ID: {timetableId}");
 
-        // Gather data from database
         var timetable = await timetableRepository.GetByIdAsync(timetableId);
         if (timetable == null) throw new ArgumentException($"Timetable with ID {timetableId} not found.");
 
@@ -53,7 +52,7 @@ public class SchedulingService(
         }).ToList();
 
         var allTeachers = await teacherRepository.GetAllAsync();
-        if (!allTeachers.Any()) throw new ArgumentException($"No teachers found in database.");
+        if (!allTeachers.Any()) throw new ArgumentException("No teachers found in database.");
 
         // Populate list of scheduling entities
         var allSchedulingEntities = new List<SchedulingEntity>();
@@ -72,19 +71,15 @@ public class SchedulingService(
                 timetable.Periods.Count
             )));
 
-        // Generate requirements document
-        var schedulingDocumentFactory =
-            new SchedulingDocumentFactory(timetable.Periods.ToList(), timetable.Periods.Count);
-        var requirementDocument = schedulingDocumentFactory.GetDocument(
-            classesToSchedule,
-            allSchedulingEntities,
-            timetable
-        );
+        var sortedPeriods = timetable.Periods.OrderBy(p => p.Start).ToList();
+        var schedulingDocumentFactory = new SchedulingDocumentFactory(sortedPeriods, timetable.Periods.Count);
+        var requirementDocument =
+            schedulingDocumentFactory.GetDocument(classesToSchedule, allSchedulingEntities, timetable);
+
         if (requirementDocument.Count == 0)
         {
-            Console.WriteLine(
-                "Generated list of requirement documents is empty. No classes to schedule. Skipping schedule generation.");
-            return false;
+            Console.WriteLine("Generated list of requirement documents is empty. No classes to schedule.");
+            return true;
         }
 
         var attempts = 0;
@@ -121,50 +116,34 @@ public class SchedulingService(
             return false;
         }
 
-        //
-        // Store generated schedule
-        //
+        Console.WriteLine("Abstract schedule solved. Projecting onto calendar...");
+        var dayIndexToIdMap = timetable.Days.OrderBy(d => (int)Enum.Parse<DayOfWeek>(d.Name, true))
+            .Select((day, index) => new { day.Id, Index = index })
+            .ToDictionary(x => x.Index, x => x.Id);
 
-        var newOccurrences = new List<ClassOccurrenceEntity>();
-        var map = new Dictionary<int, List<int>>();
-        foreach (var day in timetable.Days)
-        {
-            map.Add(day.Id, timetable.Periods.Select(o => o.Id).ToList());
-        }
+        var periodIndexToIdMap = sortedPeriods
+            .Select((period, index) => new { period.Id, Index = index })
+            .ToDictionary(x => x.Index, x => x.Id);
 
-        var mapHelper = new IndexIdMapHelper(timetable.Days.Count, timetable.Periods.Count, map);
+        var abstractSchedules = new List<AbstractClassSchedule>();
         foreach (var requirement in currentDocument)
         {
             var classEntitySchedulingId = requirement.EntitiesList.FirstOrDefault(id => id >= ClassEntityIdOffset);
-            if (classEntitySchedulingId == 0)
-            {
-                Console.WriteLine(
-                    $"Warning: Could not find Class Entity ID in S list (using offset {ClassEntityIdOffset}) for requirement S=[{string.Join(",", requirement.EntitiesList)}]. Skipping occurrence creation for this requirement.");
-                continue;
-            }
-
+            if (classEntitySchedulingId == 0) continue;
             var classEntityId = classEntitySchedulingId - ClassEntityIdOffset;
-            foreach (var resultPair in requirement.AssignedTimeslotList)
-            {
-                var pair = mapHelper.GetId(resultPair);
-                var dayIndex = pair.Day;
-                var periodIndex = pair.Period;
-                newOccurrences.Add(new ClassOccurrenceEntity
-                {
-                    ClassId = classEntityId,
-                    DayId = dayIndex,
-                    StartPeriodId = periodIndex
-                });
-            }
 
-            Console.WriteLine(
-                $"Created {requirement.AssignedTimeslotList.Count} new occurrences for Class Entity ID {classEntityId}.");
+            foreach (var resultPair in requirement.AssignedTimeslotList)
+                if (dayIndexToIdMap.TryGetValue(resultPair.Day, out var dayId) &&
+                    periodIndexToIdMap.TryGetValue(resultPair.Period, out var periodId))
+                    abstractSchedules.Add(new AbstractClassSchedule(classEntityId, dayId, periodId));
         }
 
-        classOccurrenceRepository.AddRangeAsync(newOccurrences);
+        var concreteOccurrences = calendarizationService.ProjectSchedule(timetable, abstractSchedules);
+        await classOccurrenceRepository.AddRangeAsync(concreteOccurrences);
+
         Console.WriteLine(
-            $"Finished schedule generation for timetable ID: {timetableId}. Overall success: {attempts < maxAttempts}");
-        return attempts < maxAttempts;
+            $"Finished schedule generation for timetable ID: {timetableId}. Created {concreteOccurrences.Count} concrete occurrences.");
+        return true;
 
         void InitializeJcMatrices()
         {

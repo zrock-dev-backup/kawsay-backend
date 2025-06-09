@@ -2,6 +2,6 @@ namespace Application.DTOs;
 
 public class ClassOccurrenceDto
 {
-    public int DayId { get; set; }
+    public DateOnly Date { get; set; }
     public int StartPeriodId { get; set; }
 }

@@ -15,18 +15,22 @@ public class TimetableService(ITimetableRepository repository)
             {
                 Id = entity.Id,
                 Name = entity.Name,
+                StartDate = entity.StartDate,
+                EndDate = entity.EndDate,
                 Days = entity.Days.Select(timetableDayEntity => new Day
-                {
-                    Id = timetableDayEntity.Id,
-                    Name = timetableDayEntity.Name
-                }).ToList(),
+                    {
+                        Id = timetableDayEntity.Id,
+                        Name = timetableDayEntity.Name
+                    })
+                    .ToList(),
 
                 Periods = entity.Periods.Select(timetablePeriodEntity => new Period
-                {
-                    Id = timetablePeriodEntity.Id,
-                    Start = timetablePeriodEntity.Start,
-                    End = timetablePeriodEntity.End,
-                }).ToList()
+                    {
+                        Id = timetablePeriodEntity.Id,
+                        Start = timetablePeriodEntity.Start,
+                        End = timetablePeriodEntity.End,
+                    })
+                    .ToList()
             };
     }
 
@@ -37,6 +41,8 @@ public class TimetableService(ITimetableRepository repository)
         {
             Id = e.Id,
             Name = e.Name,
+            StartDate = e.StartDate,
+            EndDate = e.EndDate,
         });
     }
 
@@ -46,6 +52,8 @@ public class TimetableService(ITimetableRepository repository)
         {
             Id = timetable.Id,
             Name = timetable.Name,
+            StartDate = timetable.StartDate,
+            EndDate = timetable.EndDate,
             Days = timetable.Days.Select(day => new TimetableDayEntity
             {
                 Name = day.Name,

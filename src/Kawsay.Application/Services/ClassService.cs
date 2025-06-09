@@ -32,7 +32,7 @@ public class ClassService(IClassRepository repository)
                 Frequency = entity.Frequency,
                 ClassOccurrences = entity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
                 {
-                    DayId = occurence.DayId,
+                    Date = occurence.Date,
                     StartPeriodId = occurence.StartPeriodId,
                 }).ToList()
             };
@@ -61,7 +61,7 @@ public class ClassService(IClassRepository repository)
             Frequency = entity.Frequency,
             ClassOccurrences = entity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
             {
-                DayId = occurence.DayId,
+                Date = occurence.Date,
                 StartPeriodId = occurence.StartPeriodId,
             }).ToList(),
             PeriodPreferences = entity.PeriodPreferences
@@ -103,7 +103,7 @@ public class ClassService(IClassRepository repository)
             Frequency = createdEntity.Frequency,
             ClassOccurrences = createdEntity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
             {
-                DayId = occurence.DayId,
+                Date = occurence.Date,
                 StartPeriodId = occurence.StartPeriodId,
             }).ToList(),
             PeriodPreferences = createdEntity.PeriodPreferences,

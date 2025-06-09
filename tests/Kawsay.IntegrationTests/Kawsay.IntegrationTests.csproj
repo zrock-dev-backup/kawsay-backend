@@ -19,9 +19,4 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Kawsay\Api.csproj" />
-  </ItemGroup>
-
 </Project>
