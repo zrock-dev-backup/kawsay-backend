@@ -7,10 +7,10 @@ namespace Infrastructure.Persistence.Repositories;
 
 public class ClassOccurrenceRepository(KawsayDbContext context) : IClassOccurrenceRepository
 {
-    public void AddRangeAsync(List<ClassOccurrenceEntity> classOccurrences)
+    public async Task AddRangeAsync(List<ClassOccurrenceEntity> classOccurrences)
     {
-        context.AddRange(classOccurrences);
-        context.SaveChanges();
+        await context.AddRangeAsync(classOccurrences);
+        await context.SaveChangesAsync();
     }
 
     public async Task DeleteByClassIdAsync(List<int> classIds)
