@@ -24,7 +24,7 @@ run:
 
 develop:
 	@echo "Entering development shell..."
-	nix develop
+	KAWSAY_CONNECTION_STRING="Host=localhost;Port=5432;Database=test;Username=user;Password=password" nix develop
 
 deps:
 	@echo "Generating NuGet dependencies..."
@@ -36,6 +36,9 @@ docker-build:
 
 docker-run:
 	docker run kawsay-backend:latest
+
+migrate:
+	KAWSAY_CONNECTION_STRING="Host=localhost;Port=5432;Database=test;Username=user;Password=password" nix run .#migrate
 
 # Utility targets
 check:

@@ -12,11 +12,11 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         commonPublishFlags = [
-        "-p:PublishSingleFile=true"
-        "-p:PublishTrimmed=true"
-        "-p:TrimMode=partial"
-        "-p:IncludeNativeLibrariesForSelfExtract=true"
-        "-p:EnableCompressionInSingleFile=true"
+          "-p:PublishSingleFile=true"
+          "-p:PublishTrimmed=true"
+          "-p:TrimMode=partial"
+          "-p:IncludeNativeLibrariesForSelfExtract=true"
+          "-p:EnableCompressionInSingleFile=true"
         ];
 
         commonBuildConfig = {
@@ -42,9 +42,9 @@
             ];
 
             makeWrapperArgs = [
-            "--set" "ASPNETCORE_ENVIRONMENT" "${environment}"
-            "--add-flags" "--contentRoot"
-            "--add-flags" "."
+              "--set" "ASPNETCORE_ENVIRONMENT" "${environment}"
+              "--add-flags" "--contentRoot"
+              "--add-flags" "."
             ];
 
             meta = with pkgs.lib; {
@@ -94,33 +94,43 @@
               echo "📊 Package count: $(jq 'length' deps.json)"
             '';
           };
+
+          migrate = pkgs.writeShellApplication {
+            name = "kawsay-migrate";
+            runtimeInputs = [
+              pkgs.dotnet-ef
+              pkgs.dotnetCorePackages.sdk_8_0
+            ];
+            text = ''
+              set -e
+              if [ -z "$KAWSAY_CONNECTION_STRING" ]; then
+                echo "Error: KAWSAY_CONNECTION_STRING environment variable is not set."
+                exit 1
+              fi
+
+              echo "Executing EF Core Migrations..."
+              dotnet ef database update \
+                --project src/Kawsay.Infrastructure/Infrastructure.csproj \
+                --startup-project src/Kawsay.Api/Api.csproj \
+                -- --connection "$KAWSAY_CONNECTION_STRING"
+
+              echo "✅ Migrations applied successfully."
+            '';
+          };
         };
 
-        # Development shell
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             dotnetCorePackages.sdk_8_0
             dotnet-ef
-            nuget-to-json
           ];
 
           shellHook = ''
-            echo "🚀 Kawsay Development Environment"
-            echo ""
-            echo "📋 Available commands:"
-            echo "  dotnet --version     : $(dotnet --version)"
-            echo "  nix run .#generateDeps : Generate NuGet dependencies"
-            echo "  nix run .#dockerPrep   : Prepare for Docker build"
-            echo ""
-            echo "🏗️  Build commands:"
-            echo "  nix build .#development : Build development version"
-            echo "  nix build .#production  : Build production version"
-            echo ""
-            echo "🐳 Docker workflow:"
-            echo "  make docker-build : Build container image"
-            echo "  make docker-run   : Run container"
-            echo ""
-            echo "💡 Tip: Use 'make help' to see all available targets"
+              set -e
+              if [ -z "$KAWSAY_CONNECTION_STRING" ]; then
+                echo "Error: KAWSAY_CONNECTION_STRING environment variable is not set."
+                exit 1
+              fi
           '';
 
           DOTNET_CLI_TELEMETRY_OPTOUT = "1";
@@ -138,8 +148,8 @@
             drv = self.packages.${system}.generateDeps;
           };
 
-          dockerPrep = flake-utils.lib.mkApp {
-            drv = self.packages.${system}.dockerPrep;
+          migrate = flake-utils.lib.mkApp {
+            drv = self.packages.${system}.migrate;
           };
         };
 
