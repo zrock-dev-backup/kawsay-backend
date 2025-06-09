@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Repositories;
 
-public class TimetableRepository (KawsayDbContext context) : ITimetableRepository
+public class TimetableRepository(KawsayDbContext context) : ITimetableRepository
 {
     public async Task<TimetableEntity?> GetByIdAsync(int id)
     {

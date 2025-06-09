@@ -19,34 +19,45 @@ public class TimetableController(TimetableService service) : ControllerBase
         if (request.Periods.Count == 0)
             return BadRequest(new { message = "At least one period is required." });
 
-        var timetable = new Timetable 
+        var timetable = new Timetable
         {
             Name = request.Name,
-            Days = request.Days.Select(dayName => new Day { Name = dayName }).ToList(),
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
+            Days = request.Days.Select(dayName => new Day
+                {
+                    Name = dayName
+                })
+                .ToList(),
             Periods = request.Periods.Select(period => new Period
-            {
-                Start = period.Start,
-                End = period.End
-            }).ToList()
+                {
+                    Start = period.Start,
+                    End = period.End
+                })
+                .ToList()
         };
-        var createdTimetable =  await service.CreateTimetableAsync(timetable);
-        
+        var createdTimetable = await service.CreateTimetableAsync(timetable);
+
         var createdTimetableDto = new TimetableStructure
         {
             Id = createdTimetable.Id,
             Name = createdTimetable.Name,
+            StartDate = createdTimetable.StartDate,
+            EndDate = createdTimetable.EndDate,
             Days = createdTimetable.Days.Select(d => new TimetableDay
-            {
-                Id = d.Id,
-                Name = d.Name
-            }).ToList(),
+                {
+                    Id = d.Id,
+                    Name = d.Name
+                })
+                .ToList(),
             Periods = createdTimetable.Periods
                 .Select(p => new TimetablePeriod
                 {
                     Id = p.Id,
                     Start = p.Start,
                     End = p.End
-                }).ToList()
+                })
+                .ToList()
         };
         return CreatedAtAction(nameof(GetTimetable), new { id = createdTimetableDto.Id }, createdTimetableDto);
     }
@@ -60,11 +71,14 @@ public class TimetableController(TimetableService service) : ControllerBase
         {
             Id = timetable.Id,
             Name = timetable.Name,
+            StartDate = timetable.StartDate,
+            EndDate = timetable.EndDate,
             Days = timetable.Days.Select(d => new TimetableDay
-            {
-                Id = d.Id,
-                Name = d.Name
-            }).ToList(),
+                {
+                    Id = d.Id,
+                    Name = d.Name
+                })
+                .ToList(),
             Periods = timetable.Periods.Select(p => new TimetablePeriod
                 {
                     Id = p.Id,

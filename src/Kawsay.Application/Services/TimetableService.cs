@@ -69,18 +69,22 @@ public class TimetableService(ITimetableRepository repository)
         {
             Id = createdEntity.Id,
             Name = createdEntity.Name,
+            StartDate = createdEntity.StartDate,
+            EndDate = createdEntity.EndDate,
             Days = createdEntity.Days.Select(timetableDayEntity => new Day
-            {
-                Id = timetableDayEntity.Id,
-                Name = timetableDayEntity.Name
-            }).ToList(),
+                {
+                    Id = timetableDayEntity.Id,
+                    Name = timetableDayEntity.Name
+                })
+                .ToList(),
 
             Periods = createdEntity.Periods.Select(timetablePeriodEntity => new Period
-            {
-                Id = timetablePeriodEntity.Id,
-                Start = timetablePeriodEntity.Start,
-                End = timetablePeriodEntity.End,
-            }).ToList()
+                {
+                    Id = timetablePeriodEntity.Id,
+                    Start = timetablePeriodEntity.Start,
+                    End = timetablePeriodEntity.End,
+                })
+                .ToList()
         };
     }
 }

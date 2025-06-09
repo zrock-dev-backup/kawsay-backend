@@ -40,7 +40,7 @@ public class ClassesController(
             ClassOccurrences = lecture.ClassOccurrences.Select(o => new ClassOccurrenceDto
             {
                 StartPeriodId = o.StartPeriodId,
-                DayId = o.DayId,
+                Date = o.Date,
             }).ToList(),
             PeriodPreferences = lecture.PeriodPreferences.Select(p => new PeriodPreferencesDto
             {
@@ -75,10 +75,10 @@ public class ClassesController(
             Length = cls.Length,
             Frequency = cls.Frequency,
             ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto
-                {
-                    DayId = o.DayId,
-                    StartPeriodId = o.StartPeriodId,
-                }).ToList(),
+            {
+                Date = o.Date,
+                StartPeriodId = o.StartPeriodId,
+            }).ToList(),
         };
         return Ok(classDto);
     }
@@ -154,7 +154,7 @@ public class ClassesController(
             ClassOccurrences = createdClassEntity.ClassOccurrences.Select(o => new ClassOccurrenceDto()
             {
                 StartPeriodId = o.StartPeriodId,
-                DayId = o.DayId,
+                Date = o.Date,
             }).ToList(),
             PeriodPreferences = createdClassEntity.PeriodPreferences.Select(p => new PeriodPreferencesDto
             {
