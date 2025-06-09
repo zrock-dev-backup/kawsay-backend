@@ -23,6 +23,10 @@ public class YuleAlgorithmSchedulingTests
 
         // Create a requirement line for a 2-period class that should occur twice
         var requirementLine = new SchedulingRequirementLine(2, 2, [1, 2], numDays, numPeriods);
+        requirementLine.SetZ(1, 0);
+        requirementLine.SetZ(2, 0);
+        requirementLine.SetZ(3, 0);
+        requirementLine.SetZ(4, 0);
     
         // Act
         var result = YuleAlgorithm.Handler(requirementLine, entities, numDays, numPeriods);
@@ -69,6 +73,10 @@ public class YuleAlgorithmSchedulingTests
         entities[0].AvailabilityMatrix.Set(0, 1, 1);
     
         var requirementLine = new SchedulingRequirementLine(1, 2, [1, 2], numDays, numPeriods);
+        requirementLine.SetZ(1, 0);
+        requirementLine.SetZ(2, 0);
+        requirementLine.SetZ(3, 0);
+        requirementLine.SetZ(4, 0);
     
         // Act
         var result = YuleAlgorithm.Handler(requirementLine, entities, numDays, numPeriods);
