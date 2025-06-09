@@ -6,6 +6,14 @@ using Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var envName = builder.Environment.EnvironmentName;
+var contentRoot = builder.Environment.ContentRootPath;
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+Console.WriteLine($"[DEBUG] Environment Name: '{envName}'");
+Console.WriteLine($"[DEBUG] Content Root Path: '{contentRoot}'");
+Console.WriteLine($"[DEBUG] Connection String: '{connStr}'");
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

@@ -11,8 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(KawsayDbContext))]
-    [Migration("20250514232124_Root")]
-    partial class Root
+    [Migration("20250609063347_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -58,7 +58,7 @@ namespace Infrastructure.Migrations
                     b.ToTable("Classes");
                 });
 
-            modelBuilder.Entity("Domain.Entities.ClassOccurrence", b =>
+            modelBuilder.Entity("Domain.Entities.ClassOccurrenceEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -107,32 +107,6 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Courses");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Code = "CSPR-101",
-                            Name = "Programming 1"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Code = "CSPR-124",
-                            Name = "Programming 2"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Code = "MATH-201",
-                            Name = "Linear Algebra"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Code = "MATH-101",
-                            Name = "Calculus I"
-                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.PeriodPreferenceEntity", b =>
@@ -179,26 +153,6 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Teachers");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Name = "Dave Smith",
-                            Type = "Professor"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Name = "Jane Doe",
-                            Type = "Faculty Practitioner"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Name = "Alice Johnson",
-                            Type = "Professor"
-                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.TimetableDayEntity", b =>
@@ -296,7 +250,7 @@ namespace Infrastructure.Migrations
                     b.Navigation("Timetable");
                 });
 
-            modelBuilder.Entity("Domain.Entities.ClassOccurrence", b =>
+            modelBuilder.Entity("Domain.Entities.ClassOccurrenceEntity", b =>
                 {
                     b.HasOne("Domain.Entities.ClassEntity", "Class")
                         .WithMany("ClassOccurrences")

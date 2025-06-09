@@ -4,10 +4,6 @@ namespace Application.Features.Scheduling.Algorithm;
 
 public static class YuleAlgorithm
 {
-    public static readonly List<string> DayOrder =
-        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-
     public static bool Handler(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities, int day,
         int period)
     {
