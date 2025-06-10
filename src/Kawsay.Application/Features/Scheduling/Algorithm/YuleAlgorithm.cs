@@ -49,20 +49,92 @@ public static class YuleAlgorithm
     private static bool Schedule(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities,
         int day, int period)
     {
-        var availabilityMatrix = requirementLine.AvailabilityMatrix;
+        var candidateSlots = new List<TimetablePair>();
         for (var dayIndex = 0; dayIndex < day; dayIndex++)
         for (var periodIndex = 0; periodIndex < period; periodIndex++)
-            if (availabilityMatrix.Get(dayIndex, periodIndex) == 0)
+        {
+            if (requirementLine.AvailabilityMatrix.Get(dayIndex, periodIndex) == 0)
+            {
                 if (ValidateLineRequirementAvailability(dayIndex, periodIndex, requirementLine, entities))
                 {
-                    UpdateEntitiesAvailability(dayIndex, periodIndex, requirementLine, entities);
-                    requirementLine.AssignedTimeslotList.Add(new TimetablePair(dayIndex, periodIndex));
-                    return true;
+                    candidateSlots.Add(new TimetablePair(dayIndex, periodIndex));
                 }
+            }
+        }
 
-        return false;
+        if (candidateSlots.Count == 0) return false;
+
+        TimetablePair? bestSlot = null;
+        var bestScore = double.MinValue;
+        foreach (var candidate in candidateSlots)
+        {
+            var score = ScoreCandidateSlot(candidate, requirementLine, entities);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestSlot = candidate;
+            }
+        }
+
+        UpdateEntitiesAvailability(bestSlot!.Day, bestSlot.Period, requirementLine, entities);
+        requirementLine.AssignedTimeslotList.Add(bestSlot);
+        return true;
     }
 
+    private static double ScoreCandidateSlot(TimetablePair candidate, SchedulingRequirementLine requirement,
+        List<SchedulingEntity> allEntities)
+    {
+        var score = 100.0;
+
+        // Heuristic 1: Day Spreading Bonus
+        // If the requirement needs multiple occurrences, reward placing this one on a new day.
+        if (requirement.Frequency > 1)
+        {
+            var dayAlreadyHasOccurrence = requirement.AssignedTimeslotList.Any(slot => slot.Day == candidate.Day);
+            if (!dayAlreadyHasOccurrence)
+            {
+                score += 50.0;
+            }
+        }
+
+        foreach (var entityId in requirement.EntitiesList)
+        {
+            var entity = allEntities.First(e => e.Id == entityId);
+            var entityMatrix = entity.AvailabilityMatrix;
+            var candidateStart = candidate.Period;
+            var candidateEnd = candidate.Period + requirement.Length - 1;
+
+            // Heuristic 2: Contiguity Bonus
+            // Reward slots that are immediately before or after an existing class for this entity.
+            if (entityMatrix.Get(candidate.Day, candidateStart - 1) == 1) // Slot immediately before is busy
+            {
+                score += 10.0;
+            }
+
+            if (entityMatrix.Get(candidate.Day, candidateEnd + 1) == 1) // Slot immediately after is busy
+            {
+                score += 10.0;
+            }
+
+            // Heuristic 3: Gap Penalty
+            // Penalize slots that create a single-period "hole" in the entity's schedule.
+            var isGapBefore = entityMatrix.Get(candidate.Day, candidateStart - 1) == 0 && // Slot before is free
+                              entityMatrix.Get(candidate.Day, candidateStart - 2) == 1; // Slot 2-before is busy
+            if (isGapBefore)
+            {
+                score -= 25.0;
+            }
+
+            var isGapAfter = entityMatrix.Get(candidate.Day, candidateEnd + 1) == 0 && // Slot after is free
+                             entityMatrix.Get(candidate.Day, candidateEnd + 2) == 1; // Slot 2-after is busy
+            if (isGapAfter)
+            {
+                score -= 25.0;
+            }
+        }
+
+        return score;
+    }
 
     private static bool ValidateLineRequirementAvailability(int dayIndex, int startPeriodIndex,
         SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities)
