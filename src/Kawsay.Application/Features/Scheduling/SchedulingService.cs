@@ -70,7 +70,7 @@ public class SchedulingService(
                 timetable.Days.Count,
                 timetable.Periods.Count
             )));
-
+        var entitiesById = allSchedulingEntities.ToDictionary(e => e.Id);
         var sortedPeriods = timetable.Periods.OrderBy(p => p.Start).ToList();
         var schedulingDocumentFactory = new SchedulingDocumentFactory(timetable.Days.ToList(), sortedPeriods);
         var requirementDocument =
@@ -86,12 +86,12 @@ public class SchedulingService(
         const int maxAttempts = 100;
         var currentDocument = new LinkedList<SchedulingRequirementLine>(requirementDocument);
         var enumerator = currentDocument.GetEnumerator();
-        InitializeJcMatrices();
+        InitializeJcMatrices(entitiesById.Values);
 
         while (enumerator.MoveNext() && attempts < maxAttempts)
         {
             var currentReq = enumerator.Current;
-            if (!YuleAlgorithm.Handler(currentReq, allSchedulingEntities, timetable.Days.Count,
+            if (!YuleAlgorithm.Handler(currentReq, entitiesById, timetable.Days.Count,
                     timetable.Periods.Count))
             {
                 Console.WriteLine(
@@ -99,7 +99,7 @@ public class SchedulingService(
                 currentDocument.Remove(currentReq);
                 currentDocument.AddFirst(currentReq);
                 enumerator = currentDocument.GetEnumerator();
-                InitializeJcMatrices();
+                InitializeJcMatrices(entitiesById.Values);
                 attempts++;
             }
             else
@@ -145,9 +145,9 @@ public class SchedulingService(
             $"Finished schedule generation for timetable ID: {timetableId}. Created {concreteOccurrences.Count} concrete occurrences.");
         return true;
 
-        void InitializeJcMatrices()
+        void InitializeJcMatrices(IEnumerable<SchedulingEntity> entitiesToReset)
         {
-            foreach (var entity in allSchedulingEntities)
+            foreach (var entity in entitiesToReset)
                 entity.AvailabilityMatrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
         }
     }

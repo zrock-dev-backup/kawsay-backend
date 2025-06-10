@@ -16,7 +16,7 @@ public class YuleAlgorithmSchedulingTests
         {
             new(1, "Teacher A", numDays, numPeriods),
             new(2, "Class 1", numDays, numPeriods)
-        };
+        }.ToDictionary(e => e.Id, e => e);
 
         var requirementLine = new SchedulingRequirementLine(1, 2, [1, 2], numDays, numPeriods);
         requirementLine.PeriodPreferenceMatrix.Set(1, 0, 0);

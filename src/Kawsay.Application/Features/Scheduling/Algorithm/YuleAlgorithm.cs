@@ -4,7 +4,8 @@ namespace Application.Features.Scheduling.Algorithm;
 
 public static class YuleAlgorithm
 {
-    public static bool Handler(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities, int day,
+    public static bool Handler(SchedulingRequirementLine requirementLine, Dictionary<int, SchedulingEntity> entities,
+        int day,
         int period)
     {
         requirementLine.AvailabilityMatrix = new SchedulingMatrix(day, period);
@@ -22,19 +23,20 @@ public static class YuleAlgorithm
     }
 
     private static void PopulateLineAvailabilityMatrix(SchedulingRequirementLine requirementLine,
-        List<SchedulingEntity> entities,
+        Dictionary<int, SchedulingEntity> entities,
         int day, int period)
     {
         var lineAvailabilityMatrix = requirementLine.AvailabilityMatrix;
         for (var dayIndex = 0; dayIndex < day; dayIndex++)
         for (var periodIndex = 0; periodIndex < period; periodIndex++)
         {
-            // Tt filter has been removed
-            // only pick slot available entities
             var allRequiredEntitiesAvailable = requirementLine.EntitiesList.All(entityId =>
             {
-                var entity = entities.FirstOrDefault(e => e.Id == entityId);
-                if (entity != null) return entity.AvailabilityMatrix.Get(dayIndex, periodIndex) == 0;
+                if (entities.TryGetValue(entityId, out var entity))
+                {
+                    return entity.AvailabilityMatrix.Get(dayIndex, periodIndex) == 0;
+                }
+
                 Console.WriteLine(
                     $"Error: Required entity ID {entityId} not found in global entities list during E matrix population for requirement S=[{string.Join(",", requirementLine.EntitiesList)}]. Treating slot [{dayIndex},{periodIndex}] as unavailable.");
                 return false;
@@ -46,7 +48,7 @@ public static class YuleAlgorithm
         }
     }
 
-    private static bool Schedule(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities,
+    private static bool Schedule(SchedulingRequirementLine requirementLine, Dictionary<int, SchedulingEntity> entities,
         int day, int period)
     {
         var candidateSlots = new List<TimetablePair>();
@@ -82,12 +84,10 @@ public static class YuleAlgorithm
     }
 
     private static double ScoreCandidateSlot(TimetablePair candidate, SchedulingRequirementLine requirement,
-        List<SchedulingEntity> allEntities)
+        Dictionary<int, SchedulingEntity> allEntities)
     {
         var score = 100.0;
 
-        // Heuristic 1: Day Spreading Bonus
-        // If the requirement needs multiple occurrences, reward placing this one on a new day.
         if (requirement.Frequency > 1)
         {
             var dayAlreadyHasOccurrence = requirement.AssignedTimeslotList.Any(slot => slot.Day == candidate.Day);
@@ -99,7 +99,8 @@ public static class YuleAlgorithm
 
         foreach (var entityId in requirement.EntitiesList)
         {
-            var entity = allEntities.First(e => e.Id == entityId);
+            if (!allEntities.TryGetValue(entityId, out var entity)) continue;
+
             var entityMatrix = entity.AvailabilityMatrix;
             var candidateStart = candidate.Period;
             var candidateEnd = candidate.Period + requirement.Length - 1;
@@ -137,7 +138,7 @@ public static class YuleAlgorithm
     }
 
     private static bool ValidateLineRequirementAvailability(int dayIndex, int startPeriodIndex,
-        SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities)
+        SchedulingRequirementLine requirementLine, Dictionary<int, SchedulingEntity> entities)
     {
         var totalTimetablePeriodAmt = requirementLine.AvailabilityMatrix.Columns;
         var remainingPeriods = totalTimetablePeriodAmt - startPeriodIndex;
@@ -147,8 +148,7 @@ public static class YuleAlgorithm
             var currentPeriodIndex = startPeriodIndex + k;
             foreach (var entityId in requirementLine.EntitiesList)
             {
-                var entity = entities.FirstOrDefault(e => e.Id == entityId);
-                if (entity == null)
+                if (!entities.TryGetValue(entityId, out var entity))
                 {
                     Console.WriteLine(
                         $"Error: Required entity ID {entityId} not found in the global entities list during validation.");
@@ -164,22 +164,22 @@ public static class YuleAlgorithm
 
 
     private static void UpdateEntitiesAvailability(int dayIndex, int startPeriodIndex,
-        SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities)
+        SchedulingRequirementLine requirementLine, Dictionary<int, SchedulingEntity> entities)
     {
         for (var k = 0; k < requirementLine.Length; k++)
         {
             var currentPeriodIndex = startPeriodIndex + k;
             foreach (var entityId in requirementLine.EntitiesList)
             {
-                var entity = entities.FirstOrDefault(e => e.Id == entityId);
-                if (entity == null)
+                if (entities.TryGetValue(entityId, out var entity))
+                {
+                    entity.AvailabilityMatrix.Set(dayIndex, currentPeriodIndex, 1);
+                }
+                else
                 {
                     Console.WriteLine(
                         $"Error: Required entity ID {entityId} not found in the global entities list during jC update.");
-                    continue;
                 }
-
-                entity.AvailabilityMatrix.Set(dayIndex, currentPeriodIndex, 1);
             }
         }
     }
