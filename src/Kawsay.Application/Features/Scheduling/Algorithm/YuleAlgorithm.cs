@@ -17,11 +17,12 @@ public static class YuleAlgorithm
 
             return false;
         }
+
         return true;
     }
 
-
-    private static void PopulateLineAvailabilityMatrix(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities,
+    private static void PopulateLineAvailabilityMatrix(SchedulingRequirementLine requirementLine,
+        List<SchedulingEntity> entities,
         int day, int period)
     {
         var lineAvailabilityMatrix = requirementLine.AvailabilityMatrix;
@@ -29,7 +30,7 @@ public static class YuleAlgorithm
         for (var periodIndex = 0; periodIndex < period; periodIndex++)
         {
             // Tt filter has been removed
-            // verification of all entities availability first member of formula 1
+            // only pick slot available entities
             var allRequiredEntitiesAvailable = requirementLine.EntitiesList.All(entityId =>
             {
                 var entity = entities.FirstOrDefault(e => e.Id == entityId);
@@ -37,19 +38,13 @@ public static class YuleAlgorithm
                 Console.WriteLine(
                     $"Error: Required entity ID {entityId} not found in global entities list during E matrix population for requirement S=[{string.Join(",", requirementLine.EntitiesList)}]. Treating slot [{dayIndex},{periodIndex}] as unavailable.");
                 return false;
-
             });
-            if (!allRequiredEntitiesAvailable)
-            {
-                lineAvailabilityMatrix.Set(dayIndex, periodIndex, 1);
-                continue;
-            }
-            
-            var constraint = requirementLine.PeriodPreferenceList[periodIndex];
-            lineAvailabilityMatrix.Set(dayIndex, periodIndex, constraint == 0 ? 0 : 1);
+
+            var isPreferredSlot = requirementLine.PeriodPreferenceMatrix.Get(dayIndex, periodIndex) == 0;
+            var isAvailable = allRequiredEntitiesAvailable && isPreferredSlot;
+            lineAvailabilityMatrix.Set(dayIndex, periodIndex, isAvailable ? 0 : 1);
         }
     }
-
 
     private static bool Schedule(SchedulingRequirementLine requirementLine, List<SchedulingEntity> entities,
         int day, int period)
@@ -64,6 +59,7 @@ public static class YuleAlgorithm
                     requirementLine.AssignedTimeslotList.Add(new TimetablePair(dayIndex, periodIndex));
                     return true;
                 }
+
         return false;
     }
 
@@ -90,6 +86,7 @@ public static class YuleAlgorithm
                 if (entity.AvailabilityMatrix.Get(dayIndex, currentPeriodIndex) == 1) return false;
             }
         }
+
         return true;
     }
 
@@ -109,6 +106,7 @@ public static class YuleAlgorithm
                         $"Error: Required entity ID {entityId} not found in the global entities list during jC update.");
                     continue;
                 }
+
                 entity.AvailabilityMatrix.Set(dayIndex, currentPeriodIndex, 1);
             }
         }
