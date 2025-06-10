@@ -72,7 +72,7 @@ public class SchedulingService(
             )));
 
         var sortedPeriods = timetable.Periods.OrderBy(p => p.Start).ToList();
-        var schedulingDocumentFactory = new SchedulingDocumentFactory(sortedPeriods, timetable.Periods.Count);
+        var schedulingDocumentFactory = new SchedulingDocumentFactory(timetable.Days.ToList(), sortedPeriods);
         var requirementDocument =
             schedulingDocumentFactory.GetDocument(classesToSchedule, allSchedulingEntities, timetable);
 

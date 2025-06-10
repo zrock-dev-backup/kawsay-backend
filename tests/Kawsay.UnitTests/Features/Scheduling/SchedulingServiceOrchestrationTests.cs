@@ -55,7 +55,8 @@ public class SchedulingServiceOrchestrationTests
             [
                 new PeriodPreferenceEntity
                 {
-                    StartPeriodId = 101
+                    DayId = 1,
+                    StartPeriodId = 101,
                 }
             ],
         };

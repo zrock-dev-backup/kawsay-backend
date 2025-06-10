@@ -11,18 +11,32 @@ public class SchedulingAlgorithmTest
     private static SchedulingRequirementLine MakeMasterClass(List<int> ids)
     {
         var x = new SchedulingRequirementLine(2, 4, ids, NumDays, NumPeriods);
-        x.SetZRange(1, 4, 0);
-        x.SetZRange(6, 9, 0);
-        x.SetZRange(12, 15, 0);
+        const int dayId = 1;
+        x.PeriodPreferenceMatrix.Set(dayId, 1, 0);
+        x.PeriodPreferenceMatrix.Set(dayId, 2, 0);
+        x.PeriodPreferenceMatrix.Set(dayId, 3, 0);
+        x.PeriodPreferenceMatrix.Set(dayId, 4, 0);
+        
+        x.PeriodPreferenceMatrix.Set(dayId, 6, 0);
+        x.PeriodPreferenceMatrix.Set(dayId, 7, 0);
+        x.PeriodPreferenceMatrix.Set(dayId, 8, 0);
+        x.PeriodPreferenceMatrix.Set(dayId, 9, 0);
+        
+        x.PeriodPreferenceMatrix.Set(dayId, 12, 0);
+        x.PeriodPreferenceMatrix.Set(dayId, 13, 0);
+        x.PeriodPreferenceMatrix.Set(dayId, 14, 0);
+        x.PeriodPreferenceMatrix.Set(dayId, 15, 0);
+        
         return x;
     }
 
     private static SchedulingRequirementLine MakeSection(List<int> ids, List<int> periods)
     {
         var x = new SchedulingRequirementLine(1, 1, ids, NumDays, NumPeriods);
+        const int dayId = 1;
         foreach (var value in periods)
         {
-            x.SetZ(value, 0);
+            x.PeriodPreferenceMatrix.Set(dayId, value, 0);
         }
         return x;
     }

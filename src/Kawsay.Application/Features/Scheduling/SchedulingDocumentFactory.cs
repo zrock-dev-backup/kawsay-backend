@@ -4,46 +4,49 @@ using Domain.Entities;
 
 namespace Application.Features.Scheduling;
 
-public class SchedulingDocumentFactory(List<TimetablePeriodEntity> periods, int amntPeriods)
+public class SchedulingDocumentFactory
 {
-    private readonly Dictionary<int, int> _periodIndexMap = MapIdToPeriodIndex(periods, amntPeriods) ?? new Dictionary<int, int>();
+    private readonly Dictionary<int, int> _periodIdToIndexMap;
+    private readonly Dictionary<int, int> _dayIdToIndexMap;
 
-    public static Dictionary<int, int>? MapIdToPeriodIndex(List<TimetablePeriodEntity> periods, int amntPeriods)
+    public SchedulingDocumentFactory(List<TimetableDayEntity> days, List<TimetablePeriodEntity> periods)
     {
-        if (periods.Count != amntPeriods) {
-            Console.WriteLine($"Error: Periods list count ({periods.Count}) does not match period amount ({amntPeriods}).");
-            return null;
-        }
-        periods.Sort();
-        var periodIndexMap = new Dictionary<int, int>();
-        for (var i = 0; i < periods.Count; i++)
-            periodIndexMap.Add(periods[i].Id, i);
-        return periodIndexMap;
+        var sortedDays = days.OrderBy(d => (int)Enum.Parse<DayOfWeek>(d.Name, true)).ToList();
+        _dayIdToIndexMap = sortedDays
+            .Select((day, index) => new { day.Id, Index = index })
+            .ToDictionary(x => x.Id, x => x.Index);
+
+        var sortedPeriods = periods.OrderBy(p => p.Start).ToList();
+        _periodIdToIndexMap = sortedPeriods
+            .Select((period, index) => new { period.Id, Index = index })
+            .ToDictionary(x => x.Id, x => x.Index);
     }
 
     private void PopulatePeriodPreferences(Class classEntity, SchedulingRequirementLine requirementLine)
     {
-        foreach (var occurrence in classEntity.PeriodPreferences)
+        foreach (var preference in classEntity.PeriodPreferences)
         {
-            var start = occurrence.StartPeriodId;
-            SetRange(start, start + classEntity.Length);
-        }
-
-        return;
-
-        void SetRange(int start, int length)
-        {
-            for (var i = start; i < length; i++)
+            if (!_dayIdToIndexMap.TryGetValue(preference.DayId, out var dayIndex))
             {
-                var periodIndex = _periodIndexMap.GetValueOrDefault(i, -1);
-                if (periodIndex < 0)
+                Console.WriteLine(
+                    $"Warning: Day ID {preference.DayId} not found in day index map. Skipping preference.");
+                continue;
+            }
+
+            if (!_periodIdToIndexMap.TryGetValue(preference.StartPeriodId, out var startPeriodIndex))
+            {
+                Console.WriteLine(
+                    $"Warning: Period ID {preference.StartPeriodId} not found in period index map. Skipping preference.");
+                continue;
+            }
+
+            for (var i = 0; i < classEntity.Length; i++)
+            {
+                var currentPeriodIndex = startPeriodIndex + i;
+                if (currentPeriodIndex < requirementLine.PeriodPreferenceMatrix.Columns)
                 {
-                    // TODO: launch an exception instead of logging
-                    Console.WriteLine(
-                        $"Warning: Period ID {i} not found in period index map. Skipping occurrence creation for this occurrence.");
-                    continue;
+                    requirementLine.PeriodPreferenceMatrix.Set(dayIndex, currentPeriodIndex, 0); // 0 = Preferred
                 }
-                requirementLine.PeriodPreferenceList[periodIndex] = 0;
             }
         }
     }
