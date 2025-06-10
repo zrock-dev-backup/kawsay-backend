@@ -55,6 +55,12 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             .HasForeignKey(o => o.StartPeriodId)
             .OnDelete(DeleteBehavior.Restrict);
         
+        modelBuilder.Entity<PeriodPreferenceEntity>()
+            .HasOne(p => p.Day)
+            .WithMany(d => d.PeriodPreferences)
+            .HasForeignKey(p => p.DayId)
+            .OnDelete(DeleteBehavior.Restrict);
+        
         modelBuilder.Entity<ClassOccurrenceEntity>()
             .HasOne(o => o.StartPeriod)
             .WithMany(period => period.Occurrences)

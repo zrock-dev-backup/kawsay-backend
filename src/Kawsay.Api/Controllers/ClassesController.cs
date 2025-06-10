@@ -42,8 +42,9 @@ public class ClassesController(
                 StartPeriodId = o.StartPeriodId,
                 Date = o.Date,
             }).ToList(),
-            PeriodPreferences = lecture.PeriodPreferences.Select(p => new PeriodPreferencesDto
+            PeriodPreferences = lecture.PeriodPreferences.Select(p => new DayPeriodPreferenceDto
             {
+                DayId = p.DayId,
                 StartPeriodId = p.StartPeriodId
             }).ToList()
         }).ToList();
@@ -79,6 +80,11 @@ public class ClassesController(
                 Date = o.Date,
                 StartPeriodId = o.StartPeriodId,
             }).ToList(),
+            PeriodPreferences = cls.PeriodPreferences.Select(p => new DayPeriodPreferenceDto
+            {
+                DayId = p.DayId,
+                StartPeriodId = p.StartPeriodId
+            }).ToList()
         };
         return Ok(classDto);
     }
@@ -97,7 +103,7 @@ public class ClassesController(
             return BadRequest(errorResponse);
         }
 
-        if (request.PeriodPreferencesList.Count == 0 || request.Frequency == 0 || request.Length == 0)
+        if (request.PeriodPreferences.Count == 0 || request.Frequency == 0 || request.Length == 0)
             return BadRequest(new { message = "A field has a 0 value" });
 
         var course = await courseService.GetCourseByIdAsync(request.CourseId);
@@ -120,17 +126,17 @@ public class ClassesController(
             });
         }
 
-        foreach (var periodPreference in
-                 request.PeriodPreferencesList.Where(periodPreference =>
-                     timetable.Periods.All(p => p.Id != periodPreference.StartPeriodId)))
+        foreach (var preference in request.PeriodPreferences)
         {
-            return BadRequest(new
+            if (timetable.Days.All(d => d.Id != preference.DayId))
             {
-                message =
-                    $"Period ID {periodPreference.StartPeriodId} not found in timetable {request.TimetableId}."
-            });
+                return BadRequest(new { message = $"Day ID {preference.DayId} not found in timetable {request.TimetableId}." });
+            }
+            if (timetable.Periods.All(p => p.Id != preference.StartPeriodId))
+            {
+                return BadRequest(new { message = $"Period ID {preference.StartPeriodId} not found in timetable {request.TimetableId}." });
+            }
         }
-
 
         var createdClassEntity = await classService.CreateClassAsync(request);
         var createdClassDto = new ClassDto
@@ -156,8 +162,9 @@ public class ClassesController(
                 StartPeriodId = o.StartPeriodId,
                 Date = o.Date,
             }).ToList(),
-            PeriodPreferences = createdClassEntity.PeriodPreferences.Select(p => new PeriodPreferencesDto
+            PeriodPreferences = createdClassEntity.PeriodPreferences.Select(p => new DayPeriodPreferenceDto
             {
+                DayId = p.DayId,
                 StartPeriodId = p.StartPeriodId,
             }).ToList(),
         };

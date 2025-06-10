@@ -9,4 +9,5 @@ public class TimetableDayEntity
     public int TimetableId { get; set; }
     public TimetableEntity Timetable { get; set; } = default!;
     public ICollection<ClassOccurrenceEntity> Occurrences { get; set; } = new List<ClassOccurrenceEntity>();
+    public ICollection<PeriodPreferenceEntity> PeriodPreferences { get; set; } = new List<PeriodPreferenceEntity>();
 }

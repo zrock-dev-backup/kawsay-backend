@@ -1,5 +1,11 @@
 namespace Application.DTOs;
 
+public class DayPeriodPreferenceDto
+{
+    public int DayId { get; set; }
+    public int StartPeriodId { get; set; }
+}
+
 public class ClassDto
 {
     public int Id { get; set; }
@@ -9,12 +15,7 @@ public class ClassDto
     public int Length { get; set; }
     public int Frequency { get; set; }
     public ICollection<ClassOccurrenceDto> ClassOccurrences { get; set; } = new List<ClassOccurrenceDto>();
-    public ICollection<PeriodPreferencesDto> PeriodPreferences { get; set; } = new List<PeriodPreferencesDto>();
-}
-
-public class PeriodPreferencesDto
-{
-    public int StartPeriodId { get; set; }
+    public ICollection<DayPeriodPreferenceDto> PeriodPreferences { get; set; } = new List<DayPeriodPreferenceDto>();
 }
 
 public class CreateClassRequest
@@ -24,5 +25,5 @@ public class CreateClassRequest
     public int TeacherId { get; set; }
     public int Length { get; set; }
     public int Frequency { get; set; }
-    public List<PeriodPreferencesDto> PeriodPreferencesList { get; set; } = [];
+    public List<DayPeriodPreferenceDto> PeriodPreferences { get; set; } = [];
 }

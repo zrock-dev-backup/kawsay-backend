@@ -34,7 +34,8 @@ public class ClassService(IClassRepository repository)
                 {
                     Date = occurence.Date,
                     StartPeriodId = occurence.StartPeriodId,
-                }).ToList()
+                }).ToList(),
+                PeriodPreferences = entity.PeriodPreferences
             };
     }
 
@@ -77,8 +78,9 @@ public class ClassService(IClassRepository repository)
             TeacherId = lecture.TeacherId,
             Frequency = lecture.Frequency,
             Length = lecture.Length,
-            PeriodPreferences = lecture.PeriodPreferencesList.Select(p => new PeriodPreferenceEntity
+            PeriodPreferences = lecture.PeriodPreferences.Select(p => new PeriodPreferenceEntity
             {
+                DayId = p.DayId,
                 StartPeriodId = p.StartPeriodId,
             }).ToList()
         };
