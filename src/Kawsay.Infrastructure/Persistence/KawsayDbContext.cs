@@ -14,7 +14,9 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
     public DbSet<ClassEntity> Classes { get; set; }
     public DbSet<PeriodPreferenceEntity> PeriodPreferences { get; set; }
     public DbSet<ClassOccurrenceEntity> ClassOccurrences { get; set; }
-
+    public DbSet<StudentEntity> Students { get; set; }
+    public DbSet<StudentModuleGrade> StudentModuleGrades { get; set; }
+    
     // Relationship configurations
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -66,5 +68,28 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             .WithMany(period => period.Occurrences)
             .HasForeignKey(o => o.StartPeriodId)
             .OnDelete(DeleteBehavior.Restrict);
+        
+        // Student enrollment
+        modelBuilder.Entity<StudentEntity>()
+            .Property(s => s.Standing)
+            .HasConversion<string>();
+        
+        modelBuilder.Entity<StudentModuleGrade>(entity =>
+        {
+            entity.HasOne(g => g.Student)
+                .WithMany(s => s.Grades)
+                .HasForeignKey(g => g.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(g => g.Course)
+                .WithMany() 
+                .HasForeignKey(g => g.CourseId)
+                .OnDelete(DeleteBehavior.Restrict); 
+
+            entity.HasOne(g => g.Timetable)
+                .WithMany() 
+                .HasForeignKey(g => g.TimetableId)
+                .OnDelete(DeleteBehavior.Cascade); 
+        });
     }
 }
