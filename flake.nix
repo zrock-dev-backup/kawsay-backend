@@ -63,7 +63,7 @@
           default = self.packages.${system}.development;
 
           dockerImage = pkgs.dockerTools.buildImage {
-            name = "kawsay-backend";
+            name = "1kawsay/kawsay-backend";
             tag = "latest";
             copyToRoot = self.packages.${system}.production;
             config = {

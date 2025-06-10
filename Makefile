@@ -35,7 +35,10 @@ docker-build:
 	docker load < result
 
 docker-run:
-	docker run kawsay-backend:latest
+	docker run 1kawsay/kawsay-backend:latest
+
+docker-publish:
+	docker push 1kawsay/kawsay-backend:latest
 
 migrate:
 	KAWSAY_CONNECTION_STRING="Host=localhost;Port=5432;Database=test;Username=user;Password=password" nix run .#migrate
