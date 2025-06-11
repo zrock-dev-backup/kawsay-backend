@@ -1,4 +1,5 @@
 using Api.Data;
+using Application.DTOs;
 using Application.Models;
 using Application.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +8,9 @@ namespace Api.Controllers;
 
 [ApiController]
 [Route("kawsay/[controller]")]
-public class TimetableController(TimetableService service) : ControllerBase
+public class TimetableController(
+    TimetableService service,
+    AcademicStructureService academicStructureService) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<TimetableStructure>> CreateTimetable([FromBody] CreateTimetableRequest request)
@@ -97,5 +100,17 @@ public class TimetableController(TimetableService service) : ControllerBase
     {
         var timetables = await service.GetAllAsync();
         return Ok(timetables.Select(t => new TimetableStructure { Id = t.Id, Name = t.Name }));
+    }
+
+    [HttpGet("{timetableId:int}/cohorts")]
+    public async Task<ActionResult<IEnumerable<CohortDetailDto>>> GetCohortsForTimetable(int timetableId)
+    {
+        var cohorts = await academicStructureService.GetCohortsByTimetableAsync(timetableId);
+        if (cohorts.Count == 0)
+        {
+            return NotFound(new { message = $"No cohorts found for timetable ID {timetableId}." });
+        }
+
+        return Ok(cohorts);
     }
 }

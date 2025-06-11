@@ -114,4 +114,27 @@ public class AcademicStructureService(
 
         await structureRepository.AssignStudentToSectionAsync(student.Id, section.Id);
     }
+
+    public async Task<List<CohortDetailDto>> GetCohortsByTimetableAsync(int timetableId)
+    {
+        var cohorts = await structureRepository.GetCohortsByTimetableAsync(timetableId);
+
+        return cohorts.Select(c => new CohortDetailDto
+        {
+            Id = c.Id,
+            Name = c.Name,
+            TimetableId = c.TimetableId,
+            StudentGroups = c.StudentGroups.Select(g => new StudentGroupDetailDto
+            {
+                Id = g.Id,
+                Name = g.Name,
+                Sections = g.Sections.Select(s => new SectionDetailDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Students = []
+                }).ToList()
+            }).ToList()
+        }).ToList();
+    }
 }
