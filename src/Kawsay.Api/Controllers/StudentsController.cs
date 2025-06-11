@@ -38,5 +38,23 @@ public class StudentsController(IStudentRepository studentRepository) : Controll
 
         return Created($"/kawsay/Students/{responseDto.Id}", responseDto);
     }
+    
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<StudentDto>> GetStudent(int id)
+    {
+        var student = await studentRepository.GetByIdAsync(id);
+        if (student == null)
+        {
+            return NotFound();
+        }
+
+        var dto = new StudentDto
+        {
+            Id = student.Id,
+            Name = student.Name,
+            Standing = student.Standing.ToString()
+        };
+        return Ok(dto);
+    }
 }
 #endif

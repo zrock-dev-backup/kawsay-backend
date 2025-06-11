@@ -1,6 +1,7 @@
 using Application.DTOs;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
+using Domain.Enums;
 
 namespace Application.Services;
 
@@ -64,5 +65,34 @@ public class EndofModuleService(
             AdvancingStudents = advancingStudents,
             RetakeStudents = retakeStudents
         };
+    }
+
+    public async Task<BulkActionResponse> BulkAdvanceStudentsAsync(BulkAdvanceRequest request)
+    {
+        if (request.StudentIds == null || !request.StudentIds.Any())
+        {
+            throw new ArgumentException("At least one student ID must be provided.", nameof(request.StudentIds));
+        }
+
+        var students = await studentRepository.GetByIdsAsync(request.StudentIds);
+
+        if (students.Count != request.StudentIds.Count)
+        {
+            var foundIds = students.Select(s => s.Id).ToList();
+            var missingIds = request.StudentIds.Except(foundIds);
+            throw new ArgumentException($"Could not find all students. Missing IDs: {string.Join(", ", missingIds)}");
+        }
+
+        foreach (var student in students)
+        {
+            student.Standing = AcademicStanding.GoodStanding;
+        }
+
+        await studentRepository.UpdateRangeAsync(students);
+
+        return new BulkActionResponse(
+            $"{students.Count} student(s) successfully advanced to Good Standing.",
+            students.Count
+        );
     }
 }

@@ -11,6 +11,13 @@ public class StudentRepository(KawsayDbContext context) : IStudentRepository
         return await context.Students.FindAsync(id);
     }
 
+    public async Task<List<StudentEntity>> GetByIdsAsync(IEnumerable<int> studentIds)
+    {
+        return await context.Students
+            .Where(s => studentIds.Contains(s.Id))
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<StudentEntity>> GetAllAsync()
     {
         return await context.Students.ToListAsync();

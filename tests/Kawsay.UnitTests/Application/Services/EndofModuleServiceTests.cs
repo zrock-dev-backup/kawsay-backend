@@ -2,23 +2,26 @@ using Application.DTOs;
 using Application.Interfaces.Persistence;
 using Application.Services;
 using Domain.Entities;
+using Domain.Enums;
 using NSubstitute;
+using NSubstitute.ReturnsExtensions;
 
 namespace Kawsay.UnitTests.Application.Services;
 
 public class EndofModuleServiceTests
 {
     private readonly IStudentModuleGradeRepository _gradeRepository;
+    private readonly IStudentRepository _studentRepository;
     private readonly ITimetableRepository _timetableRepository;
     private readonly EndofModuleService _sut;
 
     public EndofModuleServiceTests()
     {
         _gradeRepository = Substitute.For<IStudentModuleGradeRepository>();
-        var studentRepository = Substitute.For<IStudentRepository>();
+        _studentRepository = Substitute.For<IStudentRepository>();
         _timetableRepository = Substitute.For<ITimetableRepository>();
 
-        _sut = new EndofModuleService(_gradeRepository, studentRepository, _timetableRepository);
+        _sut = new EndofModuleService(_gradeRepository, _studentRepository, _timetableRepository);
     }
 
     #region IngestGradesAsync Tests
@@ -158,6 +161,69 @@ public class EndofModuleServiceTests
         Assert.NotNull(result);
         Assert.Empty(result.AdvancingStudents);
         Assert.Empty(result.RetakeStudents);
+    }
+    
+    #endregion
+    
+    #region BulkAdvanceStudentsAsync Tests
+
+    [Fact]
+    public async Task BulkAdvanceStudentsAsync_WithValidIds_UpdatesStudentsToGoodStanding()
+    {
+        // Arrange
+        var request = new BulkAdvanceRequest(1, [1, 2]);
+        var students = new List<StudentEntity>
+        {
+            new() { Id = 1, Name = "Student One", Standing = AcademicStanding.AcademicProbation },
+            new() { Id = 2, Name = "Student Two", Standing = AcademicStanding.AcademicProbation }
+        };
+        _studentRepository.GetByIdsAsync(request.StudentIds).Returns(students);
+        List<StudentEntity> updatedStudents = null!;
+        await _studentRepository.UpdateRangeAsync(Arg.Do<List<StudentEntity>>(x => updatedStudents = x));
+
+        // Act
+        var response = await _sut.BulkAdvanceStudentsAsync(request);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Equal(2, response.ProcessedCount);
+        Assert.NotNull(updatedStudents);
+        Assert.Equal(2, updatedStudents.Count);
+        Assert.All(updatedStudents, s => Assert.Equal(AcademicStanding.GoodStanding, s.Standing));
+        await _studentRepository.Received(1).GetByIdsAsync(request.StudentIds);
+        await _studentRepository.Received(1).UpdateRangeAsync(Arg.Is<List<StudentEntity>>(s => s.Count == 2));
+    }
+
+    [Fact]
+    public async Task BulkAdvanceStudentsAsync_WithEmptyIdList_ThrowsArgumentException()
+    {
+        // Arrange
+        var request = new BulkAdvanceRequest(1, []);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _sut.BulkAdvanceStudentsAsync(request));
+        Assert.Contains("At least one student ID must be provided", ex.Message);
+        await _studentRepository.DidNotReceive().GetByIdsAsync(Arg.Any<List<int>>());
+        await _studentRepository.DidNotReceive().UpdateRangeAsync(Arg.Any<List<StudentEntity>>());
+    }
+
+    [Fact]
+    public async Task BulkAdvanceStudentsAsync_WithMismatchedIds_ThrowsArgumentException()
+    {
+        // Arrange
+        var request = new BulkAdvanceRequest(1, [1, 2, 99]); // Student 99 does not exist
+        var studentsFromDb = new List<StudentEntity>
+        {
+            new() { Id = 1, Name = "Student One" },
+            new() { Id = 2, Name = "Student Two" }
+        };
+        _studentRepository.GetByIdsAsync(request.StudentIds).Returns(studentsFromDb);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _sut.BulkAdvanceStudentsAsync(request));
+        Assert.Contains("Could not find all students. Missing IDs: 99", ex.Message);
+        await _studentRepository.Received(1).GetByIdsAsync(request.StudentIds);
+        await _studentRepository.DidNotReceive().UpdateRangeAsync(Arg.Any<List<StudentEntity>>());
     }
     
     #endregion
