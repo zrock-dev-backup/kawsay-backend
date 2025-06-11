@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Application.Features.Scheduling;
 using Application.Interfaces.Persistence;
 using Application.Services;
@@ -54,6 +55,10 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader();
     });
 });
+
+builder.Services.AddControllers().AddJsonOptions(options =>
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter())
+);
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())

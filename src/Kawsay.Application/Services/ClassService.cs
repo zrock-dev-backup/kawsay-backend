@@ -2,6 +2,7 @@ using Application.DTOs;
 using Application.Interfaces.Persistence;
 using Application.Models;
 using Domain.Entities;
+using Domain.Enums;
 
 namespace Application.Services;
 
@@ -69,22 +70,27 @@ public class ClassService(IClassRepository repository)
         });
     }
 
-    public async Task<Class> CreateClassAsync(CreateClassRequest lecture)
+    public async Task<Class> CreateClassAsync(CreateClassRequest createRequest)
     {
         var entity = new ClassEntity
         {
-            TimetableId = lecture.TimetableId,
-            CourseId = lecture.CourseId,
-            TeacherId = lecture.TeacherId,
-            Frequency = lecture.Frequency,
-            Length = lecture.Length,
-            PeriodPreferences = lecture.PeriodPreferences.Select(p => new PeriodPreferenceEntity
+            TimetableId = createRequest.TimetableId,
+            CourseId = createRequest.CourseId,
+            TeacherId = createRequest.TeacherId,
+            Frequency = createRequest.Frequency,
+            Length = createRequest.Length,
+            ClassType = MapHelp(createRequest.ClassType),
+            StudentGroupId = createRequest.StudentGroupId,
+            SectionId = createRequest.SectionId,
+            PeriodPreferences = createRequest.PeriodPreferences.Select(p => new PeriodPreferenceEntity
             {
                 DayId = p.DayId,
                 StartPeriodId = p.StartPeriodId,
             }).ToList()
         };
+        
         var createdEntity = await repository.AddAsync(entity);
+        
         return new Class
         {
             Id = createdEntity.Id,
@@ -95,20 +101,41 @@ public class ClassService(IClassRepository repository)
                 Name = createdEntity.Course.Name,
                 Code = createdEntity.Course.Code,
             },
-            TeacherDto = new TeacherDto
+            TeacherDto = createdEntity.Teacher != null ? new TeacherDto
             {
                 Id = createdEntity.Teacher.Id,
                 Name = createdEntity.Teacher.Name,
                 Type = createdEntity.Teacher.Type,
-            },
+            } : null,
+            ClassType = MapHelp(createdEntity.ClassType),
             Length = createdEntity.Length,
             Frequency = createdEntity.Frequency,
-            ClassOccurrences = createdEntity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
+            ClassOccurrences = createdEntity.ClassOccurrences.Select(o => new ClassOccurrenceDto
             {
-                Date = occurence.Date,
-                StartPeriodId = occurence.StartPeriodId,
+                Date = o.Date,
+                StartPeriodId = o.StartPeriodId,
             }).ToList(),
             PeriodPreferences = createdEntity.PeriodPreferences,
+        };
+    }
+
+    private static ClassType MapHelp(ClassTypeDto dto)
+    {
+        return dto switch
+        {
+            ClassTypeDto.Lab => ClassType.Lab,
+            ClassTypeDto.Masterclass => ClassType.Masterclass,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+    
+    private static ClassTypeDto MapHelp(ClassType dto)
+    {
+        return dto switch
+        {
+            ClassType.Lab => ClassTypeDto.Lab,
+            ClassType.Masterclass => ClassTypeDto.Masterclass,
+            _ => throw new ArgumentOutOfRangeException()
         };
     }
 }

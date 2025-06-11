@@ -28,13 +28,13 @@ public class AcademicStructureController(AcademicStructureService structureServi
     public async Task<ActionResult<CohortDetailDto>> GetCohort(int cohortId)
     {
         var cohort = await structureService.GetCohortDetailsAsync(cohortId);
-        return cohort == null ? NotFound() : Ok(cohort);
+        return cohort == null ? NotFound(new { message = $"Cohort with ID {cohortId} not found."}) : Ok(cohort);
     }
     
     // --- STUDENT GROUP ENDPOINTS ---
     
     [HttpPost("groups")]
-    public async Task<IActionResult> CreateStudentGroup([FromBody] CreateStudentGroupRequest request)
+    public async Task<ActionResult<StudentGroupDetailDto>> CreateStudentGroup([FromBody] CreateStudentGroupRequest request)
     {
         try
         {
@@ -50,7 +50,7 @@ public class AcademicStructureController(AcademicStructureService structureServi
     // --- SECTION ENDPOINTS ---
 
     [HttpPost("sections")]
-    public async Task<IActionResult> CreateSection([FromBody] CreateSectionRequest request)
+    public async Task<ActionResult<SectionDetailDto>> CreateSection([FromBody] CreateSectionRequest request)
     {
         try
         {

@@ -9,6 +9,40 @@ public class AcademicStructureService(
     ITimetableRepository timetableRepository,
     IStudentRepository studentRepository)
 {
+    public async Task<StudentGroupEntity?> GetStudentGroupByIdAsync(int groupId)
+    {
+        return await structureRepository.GetStudentGroupByIdAsync(groupId);
+    }
+
+    public async Task<SectionEntity?> GetSectionWithStudentsAsync(int sectionId)
+    {
+        return await structureRepository.GetSectionWithStudentsAsync(sectionId);
+    }
+
+    public async Task<CohortDetailDto?> GetCohortDetailsAsync(int cohortId)
+    {
+        var cohort = await structureRepository.GetCohortByIdAsync(cohortId);
+        if (cohort == null) return null;
+
+        return new CohortDetailDto
+        {
+            Id = cohort.Id,
+            Name = cohort.Name,
+            TimetableId = cohort.TimetableId,
+            StudentGroups = cohort.StudentGroups.Select(g => new StudentGroupDetailDto
+            {
+                Id = g.Id,
+                Name = g.Name,
+                Sections = g.Sections.Select(s => new SectionDetailDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Students = new List<StudentDto>()
+                }).ToList()
+            }).ToList()
+        };
+    }
+
     public async Task<CohortDetailDto?> CreateCohortAsync(CreateCohortRequest request)
     {
         var timetable = await timetableRepository.GetByIdAsync(request.TimetableId);
@@ -24,12 +58,13 @@ public class AcademicStructureService(
         };
 
         var createdEntity = await structureRepository.AddCohortAsync(cohortEntity);
-        return new CohortDetailDto { Id = createdEntity.Id, Name = createdEntity.Name, TimetableId = createdEntity.TimetableId };
+        return new CohortDetailDto
+            { Id = createdEntity.Id, Name = createdEntity.Name, TimetableId = createdEntity.TimetableId };
     }
 
     public async Task<StudentGroupDetailDto?> CreateStudentGroupAsync(CreateStudentGroupRequest request)
     {
-        var cohort = await structureRepository.GetCohortByIdAsync(request.CohortId);
+        var cohort = await GetCohortDetailsAsync(request.CohortId);
         if (cohort is null)
         {
             throw new ArgumentException($"Cohort with ID {request.CohortId} not found.");
@@ -40,14 +75,14 @@ public class AcademicStructureService(
             Name = request.Name,
             CohortId = request.CohortId
         };
-        
+
         var createdEntity = await structureRepository.AddStudentGroupAsync(groupEntity);
         return new StudentGroupDetailDto { Id = createdEntity.Id, Name = createdEntity.Name };
     }
 
     public async Task<SectionDetailDto?> CreateSectionAsync(CreateSectionRequest request)
     {
-        var group = await structureRepository.GetStudentGroupByIdAsync(request.StudentGroupId);
+        var group = await GetStudentGroupByIdAsync(request.StudentGroupId);
         if (group is null)
         {
             throw new ArgumentException($"Student Group with ID {request.StudentGroupId} not found.");
@@ -70,36 +105,13 @@ public class AcademicStructureService(
         {
             throw new ArgumentException($"Student with ID {request.StudentId} not found.");
         }
-        
-        var section = await structureRepository.GetSectionWithStudentsAsync(request.SectionId);
+
+        var section = await GetSectionWithStudentsAsync(request.SectionId);
         if (section is null)
         {
             throw new ArgumentException($"Section with ID {request.SectionId} not found.");
         }
 
         await structureRepository.AssignStudentToSectionAsync(student.Id, section.Id);
-    }
-    
-    public async Task<CohortDetailDto?> GetCohortDetailsAsync(int cohortId)
-    {
-        var cohort = await structureRepository.GetCohortByIdAsync(cohortId);
-        if (cohort == null) return null;
-
-        return new CohortDetailDto
-        {
-            Id = cohort.Id,
-            Name = cohort.Name,
-            TimetableId = cohort.TimetableId,
-            StudentGroups = cohort.StudentGroups.Select(g => new StudentGroupDetailDto
-            {
-                Id = g.Id,
-                Name = g.Name,
-                Sections = g.Sections.Select(s => new SectionDetailDto
-                {
-                    Id = s.Id,
-                    Name = s.Name,
-                }).ToList()
-            }).ToList()
-        };
     }
 }
