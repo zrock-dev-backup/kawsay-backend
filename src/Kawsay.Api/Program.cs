@@ -32,10 +32,12 @@ builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
 builder.Services.AddScoped<IClassOccurrenceRepository, ClassOccurrenceRepository>();
 
-
 builder.Services.AddScoped<IStudentModuleGradeRepository, StudentModuleGradeRepository>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<EndofModuleService>();
+
+builder.Services.AddScoped<IAcademicStructureRepository, AcademicStructureRepository>();
+builder.Services.AddScoped<AcademicStructureService>();
 
 builder.Services.AddScoped<CourseService>();
 builder.Services.AddScoped<TeacherService>();
