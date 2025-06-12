@@ -17,7 +17,7 @@ public class ClassTypeConfigurationRepository(KawsayDbContext context) : IClassT
     {
         return await context.ClassTypeConfigurations.AsNoTracking().ToListAsync();
     }
-    
+
     public async Task UpsertRangeAsync(IEnumerable<ClassTypeConfigurationEntity> configurations)
     {
         foreach (var config in configurations)
@@ -34,6 +34,7 @@ public class ClassTypeConfigurationRepository(KawsayDbContext context) : IClassT
                 await context.ClassTypeConfigurations.AddAsync(config);
             }
         }
+
         await context.SaveChangesAsync();
     }
 }

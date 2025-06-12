@@ -4,7 +4,10 @@ using Domain.Entities;
 
 namespace Application.Services;
 
-public class TeacherService(ITeacherRepository repository)
+public class TeacherService(
+    ITeacherRepository repository,
+    ITeacherQualificationRepository teacherQualificationRepo
+)
 {
     public async Task<TeacherDto?> GetByIdAsync(int id)
     {
@@ -45,5 +48,22 @@ public class TeacherService(ITeacherRepository repository)
             Name = createdEntity.Name,
             Type = createdEntity.Type
         };
+    }
+
+    public async Task AddTeacherQualificationsAsync(CreateTeacherQualificationRequest request)
+    {
+        var newQualifications = request.CourseIds
+            .Select(courseId => new TeacherQualificationEntity
+            {
+                TeacherId = request.TeacherId,
+                CourseId = courseId
+            }).ToList();
+
+        if (newQualifications.Count == 0)
+        {
+            throw new ArgumentException("At least one CourseId must be provided.");
+        }
+
+        await teacherQualificationRepo.AddRangeAsync(newQualifications);
     }
 }
