@@ -16,6 +16,8 @@ public class ClassService(IClassRepository repository)
             : new Class
             {
                 Id = entity.Id,
+                StartDate = entity.StartDate,
+                EndDate = entity.EndDate,
                 TimetableId = entity.TimetableId,
                 CourseDto = new CourseDto
                 {
@@ -23,19 +25,23 @@ public class ClassService(IClassRepository repository)
                     Name = entity.Course.Name,
                     Code = entity.Course.Code,
                 },
-                TeacherDto = new TeacherDto
-                {
-                    Id = entity.Teacher.Id,
-                    Name = entity.Teacher.Name,
-                    Type = entity.Teacher.Type,
-                },
+                TeacherDto = entity.Teacher != null
+                    ? new TeacherDto
+                    {
+                        Id = entity.Teacher.Id,
+                        Name = entity.Teacher.Name,
+                        Type = entity.Teacher.Type,
+                    }
+                    : null,
+                ClassType = MapHelp(entity.ClassType),
                 Length = entity.Length,
                 Frequency = entity.Frequency,
                 ClassOccurrences = entity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
-                {
-                    Date = occurence.Date,
-                    StartPeriodId = occurence.StartPeriodId,
-                }).ToList(),
+                    {
+                        Date = occurence.Date,
+                        StartPeriodId = occurence.StartPeriodId,
+                    })
+                    .ToList(),
                 PeriodPreferences = entity.PeriodPreferences
             };
     }
@@ -46,6 +52,8 @@ public class ClassService(IClassRepository repository)
         return entities.Select(entity => new Class
         {
             Id = entity.Id,
+            StartDate = entity.StartDate,
+            EndDate = entity.EndDate,
             TimetableId = entity.TimetableId,
             CourseDto = new CourseDto
             {
@@ -53,19 +61,23 @@ public class ClassService(IClassRepository repository)
                 Name = entity.Course.Name,
                 Code = entity.Course.Code,
             },
-            TeacherDto = new TeacherDto
-            {
-                Id = entity.Teacher.Id,
-                Name = entity.Teacher.Name,
-                Type = entity.Teacher.Type,
-            },
+            TeacherDto = entity.Teacher != null
+                ? new TeacherDto
+                {
+                    Id = entity.Teacher.Id,
+                    Name = entity.Teacher.Name,
+                    Type = entity.Teacher.Type,
+                }
+                : null,
+            ClassType = MapHelp(entity.ClassType),
             Length = entity.Length,
             Frequency = entity.Frequency,
             ClassOccurrences = entity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
-            {
-                Date = occurence.Date,
-                StartPeriodId = occurence.StartPeriodId,
-            }).ToList(),
+                {
+                    Date = occurence.Date,
+                    StartPeriodId = occurence.StartPeriodId,
+                })
+                .ToList(),
             PeriodPreferences = entity.PeriodPreferences
         });
     }
@@ -77,6 +89,8 @@ public class ClassService(IClassRepository repository)
             TimetableId = createRequest.TimetableId,
             CourseId = createRequest.CourseId,
             TeacherId = createRequest.TeacherId,
+            StartDate = createRequest.StartDate,
+            EndDate = createRequest.EndDate,
             Frequency = createRequest.Frequency,
             Length = createRequest.Length,
             ClassType = MapHelp(createRequest.ClassType),
@@ -88,12 +102,14 @@ public class ClassService(IClassRepository repository)
                 StartPeriodId = p.StartPeriodId,
             }).ToList()
         };
-        
+
         var createdEntity = await repository.AddAsync(entity);
-        
+
         return new Class
         {
             Id = createdEntity.Id,
+            StartDate = createdEntity.StartDate,
+            EndDate = createdEntity.EndDate,
             TimetableId = createdEntity.TimetableId,
             CourseDto = new CourseDto
             {
@@ -101,12 +117,14 @@ public class ClassService(IClassRepository repository)
                 Name = createdEntity.Course.Name,
                 Code = createdEntity.Course.Code,
             },
-            TeacherDto = createdEntity.Teacher != null ? new TeacherDto
-            {
-                Id = createdEntity.Teacher.Id,
-                Name = createdEntity.Teacher.Name,
-                Type = createdEntity.Teacher.Type,
-            } : null,
+            TeacherDto = createdEntity.Teacher != null
+                ? new TeacherDto
+                {
+                    Id = createdEntity.Teacher.Id,
+                    Name = createdEntity.Teacher.Name,
+                    Type = createdEntity.Teacher.Type,
+                }
+                : null,
             ClassType = MapHelp(createdEntity.ClassType),
             Length = createdEntity.Length,
             Frequency = createdEntity.Frequency,
@@ -125,17 +143,17 @@ public class ClassService(IClassRepository repository)
         {
             ClassTypeDto.Lab => ClassType.Lab,
             ClassTypeDto.Masterclass => ClassType.Masterclass,
-            _ => throw new ArgumentOutOfRangeException()
+            _ => throw new ArgumentOutOfRangeException(nameof(dto), $"Not a valid ClassTypeDto value: {dto}")
         };
     }
-    
+
     private static ClassTypeDto MapHelp(ClassType dto)
     {
         return dto switch
         {
             ClassType.Lab => ClassTypeDto.Lab,
             ClassType.Masterclass => ClassTypeDto.Masterclass,
-            _ => throw new ArgumentOutOfRangeException()
+            _ => throw new ArgumentOutOfRangeException(nameof(dto), $"Not a valid ClassType value: {dto}")
         };
     }
 }

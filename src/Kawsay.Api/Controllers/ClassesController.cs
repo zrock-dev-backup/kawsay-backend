@@ -20,6 +20,8 @@ public class ClassesController(
         var classDtos = classes.Select(c => new ClassDto
         {
             Id = c.Id,
+            StartDate = c.StartDate,
+            EndDate = c.EndDate,
             TimetableId = c.TimetableId,
             Frequency = c.Frequency,
             Length = c.Length,
@@ -46,6 +48,8 @@ public class ClassesController(
         var classDto = new ClassDto
         {
             Id = c.Id,
+            StartDate = c.StartDate,
+            EndDate = c.EndDate,
             TimetableId = c.TimetableId,
             CourseDto = c.CourseDto,
             TeacherDto = c.TeacherDto,
@@ -111,6 +115,8 @@ public class ClassesController(
         var createdClassDto = new ClassDto
         {
             Id = createdClassModel.Id,
+            StartDate = createdClassModel.StartDate,
+            EndDate = createdClassModel.EndDate,
             TimetableId = createdClassModel.TimetableId,
             Length = createdClassModel.Length,
             Frequency = createdClassModel.Frequency,

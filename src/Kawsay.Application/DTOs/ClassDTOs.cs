@@ -15,6 +15,8 @@ public enum ClassTypeDto
 public class ClassDto
 {
     public int Id { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public int TimetableId { get; set; }
     public CourseDto CourseDto { get; set; } = new();
     public TeacherDto? TeacherDto { get; set; }
@@ -36,6 +38,9 @@ public class CreateClassRequest
     public ClassTypeDto ClassType { get; set; }
     public int? StudentGroupId { get; set; }
     public int? SectionId { get; set; }
+    
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
 
     public List<DayPeriodPreferenceDto> PeriodPreferences { get; set; } = [];
 }

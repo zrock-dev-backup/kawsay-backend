@@ -57,3 +57,7 @@ check:
 health:
 	@echo "Health checking..."
 	curl -f http://localhost:8080/health || echo "Health check failed"
+
+update-export:
+	rm /tmp/backend-update.zip
+	git diff --name-only HEAD src/ | xargs zip /tmp/backend-update.zip

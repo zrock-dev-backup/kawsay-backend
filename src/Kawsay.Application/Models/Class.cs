@@ -6,6 +6,8 @@ namespace Application.Models;
 public class Class
 {
     public int Id { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public int TimetableId { get; set; }
     public CourseDto CourseDto { get; set; } = new();
     public TeacherDto? TeacherDto { get; set; } = new();
