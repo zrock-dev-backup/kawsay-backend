@@ -40,6 +40,11 @@ builder.Services.AddScoped<EndofModuleService>();
 builder.Services.AddScoped<IAcademicStructureRepository, AcademicStructureRepository>();
 builder.Services.AddScoped<AcademicStructureService>();
 
+builder.Services.AddScoped<ITeacherQualificationRepository, TeacherQualificationRepository>();
+builder.Services.AddScoped<IClassTypeConfigurationRepository, ClassTypeConfigurationRepository>();
+builder.Services.AddScoped<ITeacherQualificationRepository, TeacherQualificationRepository>();
+
+builder.Services.AddScoped<ConfigurationService>();
 builder.Services.AddScoped<CourseService>();
 builder.Services.AddScoped<TeacherService>();
 builder.Services.AddScoped<TimetableService>();

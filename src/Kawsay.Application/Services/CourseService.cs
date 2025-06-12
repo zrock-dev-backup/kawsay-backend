@@ -1,10 +1,13 @@
 using Application.DTOs;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
+using Domain.Enums;
 
 namespace Application.Services;
 
-public class CourseService(ICourseRepository courseRepository)
+public class CourseService(
+    ICourseRepository courseRepository,
+    ITeacherQualificationRepository qualificationRepository)
 {
     public async Task<CourseDto?> GetCourseByIdAsync(int id)
     {
@@ -45,5 +48,16 @@ public class CourseService(ICourseRepository courseRepository)
             Name = createdEntity.Name,
             Code = createdEntity.Code
         };
+    }
+
+    public async Task<IEnumerable<TeacherDto>> GetQualifiedTeachersForCourseAsync(int courseId)
+    {
+        var teachers = await qualificationRepository.GetQualifiedTeachersForCourseAsync(courseId);
+        return teachers.Select(t => new TeacherDto
+        {
+            Id = t.Id,
+            Name = t.Name,
+            Type = t.Type
+        });
     }
 }

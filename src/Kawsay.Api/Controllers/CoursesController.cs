@@ -35,4 +35,11 @@ public class CoursesController(CourseService service) : ControllerBase
             },
             createdCourseDto);
     }
+    
+    [HttpGet("{courseId:int}/qualified-teachers")]
+    public async Task<ActionResult<IEnumerable<TeacherDto>>> GetQualifiedTeachers(int courseId)
+    {
+        var teachers = await service.GetQualifiedTeachersForCourseAsync(courseId);
+        return Ok(teachers);
+    }
 }
