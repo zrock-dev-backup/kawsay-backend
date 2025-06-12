@@ -58,8 +58,9 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers().AddJsonOptions(options =>
-    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter())
-);
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())

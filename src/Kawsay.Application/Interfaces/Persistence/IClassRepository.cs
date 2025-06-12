@@ -7,4 +7,6 @@ public interface IClassRepository
     Task<ClassEntity?> GetByIdAsync(int id);
     Task<IEnumerable<ClassEntity>> GetAllAsync(int timetableId);
     Task<ClassEntity> AddAsync(ClassEntity lecture);
+    Task UpdateAsync(ClassEntity lecture);
+    Task DeleteAsync(ClassEntity lecture);
 }

@@ -134,6 +134,47 @@ public class ClassService(IClassRepository repository)
             PeriodPreferences = createdEntity.PeriodPreferences,
         };
     }
+    
+    public async Task<Class?> UpdateClassAsync(int classId, CreateClassRequest updateRequest)
+    {
+        var existingEntity = await repository.GetByIdAsync(classId);
+        if (existingEntity == null)
+        {
+            return null;
+        }
+
+        existingEntity.CourseId = updateRequest.CourseId;
+        existingEntity.TeacherId = updateRequest.TeacherId;
+        existingEntity.Length = updateRequest.Length;
+        existingEntity.Frequency = updateRequest.Frequency;
+        existingEntity.ClassType = MapHelp(updateRequest.ClassType);
+        existingEntity.StartDate = updateRequest.StartDate;
+        existingEntity.EndDate = updateRequest.EndDate;
+
+        existingEntity.PeriodPreferences.Clear();
+        foreach (var p in updateRequest.PeriodPreferences)
+        {
+            existingEntity.PeriodPreferences.Add(new PeriodPreferenceEntity
+            {
+                DayId = p.DayId,
+                StartPeriodId = p.StartPeriodId,
+            });
+        }
+        
+        await repository.UpdateAsync(existingEntity);
+        return await GetByIdAsync(classId);
+    }
+    
+    public async Task<bool> DeleteClassAsync(int classId)
+    {
+        var entity = await repository.GetByIdAsync(classId);
+        if (entity == null)
+        {
+            return false;
+        }
+        await repository.DeleteAsync(entity);
+        return true;
+    }
 
     private static ClassType MapHelp(ClassTypeDto dto)
     {

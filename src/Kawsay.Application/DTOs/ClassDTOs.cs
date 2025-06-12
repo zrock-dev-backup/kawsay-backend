@@ -18,8 +18,14 @@ public class ClassDto
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public int TimetableId { get; set; }
-    public CourseDto CourseDto { get; set; } = new();
-    public TeacherDto? TeacherDto { get; set; }
+    
+    public int CourseId { get; set; }
+    public string CourseName { get; set; } = string.Empty;
+    public string CourseCode { get; set; } = string.Empty;
+        
+    public int? TeacherId { get; set; }
+    public string? TeacherName { get; set; }
+    
     public int Length { get; set; }
     public int Frequency { get; set; }
     public int? StudentGroupId { get; set; }

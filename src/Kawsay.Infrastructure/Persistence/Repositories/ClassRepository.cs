@@ -12,6 +12,7 @@ public class ClassRepository(KawsayDbContext context) : IClassRepository
             .Include(c => c.Course)
             .Include(c => c.Teacher)
             .Include(c => c.ClassOccurrences)
+            .Include(c => c.PeriodPreferences)
             .Where(c => c.Id == id)
             .FirstOrDefaultAsync();
     }
@@ -33,5 +34,17 @@ public class ClassRepository(KawsayDbContext context) : IClassRepository
         await context.SaveChangesAsync();
         // TODO: Why should return lecture?
         return lecture;
+    }
+    
+    public async Task UpdateAsync(ClassEntity lecture)
+    {
+        context.Classes.Update(lecture);
+        await context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(ClassEntity lecture)
+    {
+        context.Classes.Remove(lecture);
+        await context.SaveChangesAsync();
     }
 }
