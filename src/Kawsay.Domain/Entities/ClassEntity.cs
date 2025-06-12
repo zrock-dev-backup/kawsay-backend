@@ -7,6 +7,9 @@ public class ClassEntity
 {
     [Key] public int Id { get; set; }
 
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+
     public int TimetableId { get; set; }
     public TimetableEntity Timetable { get; set; } = default!;
 

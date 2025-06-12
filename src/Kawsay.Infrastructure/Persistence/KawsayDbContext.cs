@@ -22,6 +22,8 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
     public DbSet<SectionEntity> Sections { get; set; }
     public DbSet<CoursePrerequisiteEntity> CoursePrerequisites { get; set; }
     public DbSet<HolidayEntity> Holidays { get; set; }
+    public DbSet<ClassTypeConfigurationEntity> ClassTypeConfigurations { get; set; }
+    public DbSet<TeacherQualificationEntity> TeacherQualifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -168,5 +170,26 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             .WithMany()
             .HasForeignKey(h => h.TimetableId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TeacherQualificationEntity>()
+            .HasKey(tq => new { tq.TeacherId, tq.CourseId }); // Composite Key
+
+        modelBuilder.Entity<TeacherQualificationEntity>()
+            .HasOne(tq => tq.Teacher)
+            .WithMany(t => t.CourseQualifications)
+            .HasForeignKey(tq => tq.TeacherId);
+
+        modelBuilder.Entity<TeacherQualificationEntity>()
+            .HasOne(tq => tq.Course)
+            .WithMany(c => c.TeacherQualifications)
+            .HasForeignKey(tq => tq.CourseId);
+
+        modelBuilder.Entity<ClassTypeConfigurationEntity>()
+            .HasIndex(c => c.ClassType)
+            .IsUnique();
+
+        modelBuilder.Entity<ClassTypeConfigurationEntity>()
+            .Property(c => c.ClassType)
+            .HasConversion<string>();
     }
 }
