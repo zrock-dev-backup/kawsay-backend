@@ -14,9 +14,10 @@ public class ConfigurationController(ConfigurationService configService) : Contr
         var configs = await configService.GetAllClassTypeConfigurationsAsync();
         return Ok(configs);
     }
-    
+
     [HttpPost("class-type-defaults")]
-    public async Task<IActionResult> SetClassTypeConfigurations([FromBody] List<SetClassTypeConfigurationRequest> request)
+    public async Task<IActionResult> SetClassTypeConfigurations(
+        [FromBody] List<SetClassTypeConfigurationRequest> request)
     {
         if (!ModelState.IsValid)
         {
@@ -27,20 +28,6 @@ public class ConfigurationController(ConfigurationService configService) : Contr
         {
             await configService.SetClassTypeConfigurationsAsync(request);
             return Ok(new { message = "Class type configurations updated successfully." });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    [HttpPost("teacher-qualifications")]
-    public async Task<IActionResult> AddTeacherQualifications([FromBody] CreateTeacherQualificationRequest request)
-    {
-        try
-        {
-            await configService.AddTeacherQualificationsAsync(request);
-            return Ok(new { message = "Teacher qualifications added successfully." });
         }
         catch (ArgumentException ex)
         {

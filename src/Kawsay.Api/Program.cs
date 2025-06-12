@@ -26,30 +26,26 @@ builder.Services.AddDbContext<KawsayDbContext>(options =>
     );
 });
 
-builder.Services.AddScoped<SchedulingService>();
-builder.Services.AddScoped<ICourseRepository, CourseRepository>();
-builder.Services.AddScoped<IClassRepository, ClassRepository>();
-builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
-builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
+builder.Services.AddScoped<IAcademicStructureRepository, AcademicStructureRepository>();
 builder.Services.AddScoped<IClassOccurrenceRepository, ClassOccurrenceRepository>();
-
+builder.Services.AddScoped<IClassRepository, ClassRepository>();
+builder.Services.AddScoped<IClassTypeConfigurationRepository, ClassTypeConfigurationRepository>();
+builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IStudentModuleGradeRepository, StudentModuleGradeRepository>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
-builder.Services.AddScoped<EndofModuleService>();
+builder.Services.AddScoped<ITeacherQualificationRepository, TeacherQualificationRepository>();
+builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
+builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
 
-builder.Services.AddScoped<IAcademicStructureRepository, AcademicStructureRepository>();
 builder.Services.AddScoped<AcademicStructureService>();
-
-builder.Services.AddScoped<ITeacherQualificationRepository, TeacherQualificationRepository>();
-builder.Services.AddScoped<IClassTypeConfigurationRepository, ClassTypeConfigurationRepository>();
-builder.Services.AddScoped<ITeacherQualificationRepository, TeacherQualificationRepository>();
-
+builder.Services.AddScoped<CalendarizationService>();
+builder.Services.AddScoped<ClassService>();
 builder.Services.AddScoped<ConfigurationService>();
 builder.Services.AddScoped<CourseService>();
+builder.Services.AddScoped<EndofModuleService>();
+builder.Services.AddScoped<SchedulingService>();
 builder.Services.AddScoped<TeacherService>();
 builder.Services.AddScoped<TimetableService>();
-builder.Services.AddScoped<ClassService>();
-builder.Services.AddScoped<CalendarizationService>();
 
 builder.Services.AddCors(options =>
 {
