@@ -88,28 +88,6 @@ public class ClassesController(
         if (request.TeacherId.HasValue && await teacherService.GetByIdAsync(request.TeacherId.Value) == null)
             return BadRequest(new { message = $"Teacher with ID {request.TeacherId.Value} not found." });
 
-        // Hierarchy links validation
-        switch (request.ClassType)
-        {
-            case ClassTypeDto.Masterclass:
-                if (!request.StudentGroupId.HasValue)
-                    return BadRequest(new { message = "StudentGroupId is required for Masterclasses." });
-                if (request.SectionId.HasValue)
-                    return BadRequest(new { message = "SectionId must be null for Masterclasses." });
-                if (await structureService.GetStudentGroupByIdAsync(request.StudentGroupId.Value) == null)
-                    return BadRequest(new
-                        { message = $"StudentGroup with ID {request.StudentGroupId.Value} not found." });
-                break;
-            case ClassTypeDto.Lab:
-                if (!request.SectionId.HasValue)
-                    return BadRequest(new { message = "SectionId is required for Labs." });
-                if (request.StudentGroupId.HasValue)
-                    return BadRequest(new { message = "StudentGroupId must be null for Labs." });
-                if (await structureService.GetSectionWithStudentsAsync(request.SectionId.Value) == null)
-                    return BadRequest(new { message = $"Section with ID {request.SectionId.Value} not found." });
-                break;
-        }
-
         var createdClassModel = await classService.CreateClassAsync(request);
 
         var createdClassDto = new ClassDto

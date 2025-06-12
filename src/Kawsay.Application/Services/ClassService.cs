@@ -94,8 +94,6 @@ public class ClassService(IClassRepository repository)
             Frequency = createRequest.Frequency,
             Length = createRequest.Length,
             ClassType = MapHelp(createRequest.ClassType),
-            StudentGroupId = createRequest.StudentGroupId,
-            SectionId = createRequest.SectionId,
             PeriodPreferences = createRequest.PeriodPreferences.Select(p => new PeriodPreferenceEntity
             {
                 DayId = p.DayId,
