@@ -31,6 +31,7 @@ builder.Services.AddScoped<IClassOccurrenceRepository, ClassOccurrenceRepository
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<IClassTypeConfigurationRepository, ClassTypeConfigurationRepository>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
+builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
 builder.Services.AddScoped<IStudentModuleGradeRepository, StudentModuleGradeRepository>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<ITeacherQualificationRepository, TeacherQualificationRepository>();
@@ -43,6 +44,7 @@ builder.Services.AddScoped<ClassService>();
 builder.Services.AddScoped<ConfigurationService>();
 builder.Services.AddScoped<CourseService>();
 builder.Services.AddScoped<EndofModuleService>();
+builder.Services.AddScoped<EnrollmentService>();
 builder.Services.AddScoped<SchedulingService>();
 builder.Services.AddScoped<TeacherService>();
 builder.Services.AddScoped<TimetableService>();
