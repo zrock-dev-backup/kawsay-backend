@@ -8,21 +8,38 @@ namespace Api.Controllers;
 
 [ApiController]
 [Route("kawsay/[controller]")]
-public class StudentsController(IStudentRepository studentRepository, IClassRepository classRepository) : ControllerBase
+public class StudentsController(
+    IStudentRepository studentRepository,
+    IClassRepository classRepository,
+    IEnrollmentRepository enrollmentRepository) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<StudentDto>>> GetAllStudents()
+    public async Task<ActionResult<IEnumerable<StudentDto>>> GetAllStudents([FromQuery] int? timetableId)
     {
         var students = await studentRepository.GetAllAsync();
-        var dtos = students.Select(s => new StudentDto
+        var dtos = new List<StudentDto>();
+
+        foreach (var s in students)
         {
-            Id = s.Id,
-            Name = s.Name,
-            Standing = s.Standing.ToString()
-        });
+            var courseLoad = 0;
+            if (timetableId.HasValue)
+            {
+                var enrollments = await enrollmentRepository.GetEnrollmentsForStudentAsync(s.Id, timetableId.Value);
+                courseLoad = enrollments.Count;
+            }
+
+            dtos.Add(new StudentDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Standing = s.Standing.ToString(),
+                CurrentCourseLoad = courseLoad
+            });
+        }
+
         return Ok(dtos);
     }
-    
+
     [HttpPost]
     public async Task<ActionResult<StudentDto>> CreateStudent([FromBody] StudentDto studentDto)
     {
