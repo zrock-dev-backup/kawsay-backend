@@ -18,4 +18,6 @@ public class AvailableClassDto : ClassDto
     public bool IsEligible { get; set; }
     public string? IneligibilityReason { get; set; }
     public bool IsRetake { get; set; }
+    public int CurrentEnrollment { get; set; }
+    public int Capacity { get; set; }
 }
