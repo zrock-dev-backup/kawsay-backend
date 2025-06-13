@@ -60,6 +60,7 @@ public class ClassesController(
             TeacherName = createdClassModel.TeacherDto?.Name,
             Length = createdClassModel.Length,
             Frequency = createdClassModel.Frequency,
+            Capacity = createdClassModel.Capacity,
             ClassType = createdClassModel.ClassType,
             ClassOccurrences = createdClassModel.ClassOccurrences,
             PeriodPreferences = createdClassModel.PeriodPreferences.Select(p => new DayPeriodPreferenceDto

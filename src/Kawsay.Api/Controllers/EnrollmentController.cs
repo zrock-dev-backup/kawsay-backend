@@ -20,7 +20,14 @@ public class EnrollmentController(EnrollmentService enrollmentService) : Control
         try
         {
             var enrollment = await enrollmentService.EnrollStudentAsync(request);
-            return Ok(enrollment);
+            var responseDto = new EnrollmentResponseDto
+            {
+                Id = enrollment.Id,
+                StudentId = enrollment.StudentId,
+                ClassId = enrollment.ClassId,
+                EnrollmentDate = enrollment.EnrollmentDate
+            };
+            return Ok(responseDto);
         }
         catch (ValidationException ex)
         {

@@ -13,11 +13,18 @@ public class EnrollmentRequestDto
     public bool Force { get; set; } = false;
 }
 
+public class EnrollmentResponseDto
+{
+    public int Id { get; set; }
+    public int StudentId { get; set; }
+    public int ClassId { get; set; }
+    public DateTime EnrollmentDate { get; set; }
+}
+
 public class AvailableClassDto : ClassDto
 {
     public bool IsEligible { get; set; }
     public string? IneligibilityReason { get; set; }
     public bool IsRetake { get; set; }
-    public int CurrentEnrollment { get; set; }
-    public int Capacity { get; set; }
+    public int CurrentEnrollment { get; set; } // Added for clarity
 }

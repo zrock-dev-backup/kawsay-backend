@@ -28,6 +28,7 @@ public class ClassDto
     
     public int Length { get; set; }
     public int Frequency { get; set; }
+    public int Capacity { get; set; }
     public int? StudentGroupId { get; set; }
     public int? SectionId { get; set; }
     public ClassTypeDto ClassType { get; set; }
@@ -42,6 +43,7 @@ public class CreateClassRequest
     public int? TeacherId { get; set; }
     public int Length { get; set; }
     public int Frequency { get; set; }
+    public int Capacity { get; set; }
     public ClassTypeDto ClassType { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }

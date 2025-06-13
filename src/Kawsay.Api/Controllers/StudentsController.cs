@@ -10,6 +10,19 @@ namespace Api.Controllers;
 [Route("kawsay/[controller]")]
 public class StudentsController(IStudentRepository studentRepository, IClassRepository classRepository) : ControllerBase
 {
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<StudentDto>>> GetAllStudents()
+    {
+        var students = await studentRepository.GetAllAsync();
+        var dtos = students.Select(s => new StudentDto
+        {
+            Id = s.Id,
+            Name = s.Name,
+            Standing = s.Standing.ToString()
+        });
+        return Ok(dtos);
+    }
+    
     [HttpPost]
     public async Task<ActionResult<StudentDto>> CreateStudent([FromBody] StudentDto studentDto)
     {

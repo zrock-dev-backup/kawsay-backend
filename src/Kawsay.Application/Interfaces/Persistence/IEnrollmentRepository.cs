@@ -6,4 +6,5 @@ public interface IEnrollmentRepository
 {
     Task<EnrollmentEntity> AddAsync(EnrollmentEntity enrollment);
     Task<List<EnrollmentEntity>> GetEnrollmentsForStudentAsync(int studentId, int timetableId);
+    Task<int> CountByClassIdAsync(int classId);
 }

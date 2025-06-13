@@ -35,6 +35,7 @@ public class ClassService(IClassRepository repository)
                     : null,
                 ClassType = MapHelp(entity.ClassType),
                 Length = entity.Length,
+                Capacity = entity.Capacity,
                 Frequency = entity.Frequency,
                 ClassOccurrences = entity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
                     {
@@ -71,6 +72,7 @@ public class ClassService(IClassRepository repository)
                 : null,
             ClassType = MapHelp(entity.ClassType),
             Length = entity.Length,
+            Capacity = entity.Capacity,
             Frequency = entity.Frequency,
             ClassOccurrences = entity.ClassOccurrences.Select(occurence => new ClassOccurrenceDto
                 {
@@ -93,6 +95,7 @@ public class ClassService(IClassRepository repository)
             EndDate = createRequest.EndDate,
             Frequency = createRequest.Frequency,
             Length = createRequest.Length,
+            Capacity = createRequest.Capacity,
             ClassType = MapHelp(createRequest.ClassType),
             PeriodPreferences = createRequest.PeriodPreferences.Select(p => new PeriodPreferenceEntity
             {

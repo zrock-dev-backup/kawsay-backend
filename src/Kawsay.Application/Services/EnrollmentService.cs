@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Application.DTOs;
 using Application.Interfaces.Persistence;
+using Application.Models;
 using Domain.Entities;
 
 namespace Application.Services;
@@ -9,7 +10,7 @@ public class EnrollmentService(
     IStudentRepository studentRepository,
     IClassRepository classRepository,
     IEnrollmentRepository enrollmentRepository,
-    ICourseRepository courseRepository)
+    ITimetableRepository timetableRepository)
 {
     public async Task<EnrollmentEntity> EnrollStudentAsync(EnrollmentRequestDto request)
     {
@@ -21,9 +22,9 @@ public class EnrollmentService(
 
         if (!request.Force)
         {
-            await ValidatePrerequisites(student, classToEnroll.CourseId);
-            await ValidateCapacity(classToEnroll);
             await ValidateTimeClash(student, classToEnroll);
+            await ValidateCapacity(classToEnroll);
+            await ValidatePrerequisites(student, classToEnroll.CourseId);
         }
 
         var enrollment = new EnrollmentEntity
@@ -36,55 +37,38 @@ public class EnrollmentService(
         return await enrollmentRepository.AddAsync(enrollment);
     }
 
-    private async Task ValidatePrerequisites(StudentEntity student, int courseId)
-    {
-        // TODO: Enhance prerequisite validation logic.
-        Console.WriteLine($"Prerequisite validation for Student {student.Id} and Course {courseId}.");
-        await Task.CompletedTask;
-    }
-
-    private static Task ValidateCapacity(ClassEntity classToEnroll)
-    {
-        if (classToEnroll.Enrollments.Count >= classToEnroll.Capacity)
-        {
-            throw new ValidationException(
-                $"Class '{classToEnroll.Course.Name}' is full. Capacity is {classToEnroll.Capacity}.");
-        }
-
-        return Task.CompletedTask;
-    }
-
     private async Task ValidateTimeClash(StudentEntity student, ClassEntity classToEnroll)
     {
+        var timetable = await timetableRepository.GetByIdAsync(classToEnroll.TimetableId) ??
+                        throw new InvalidOperationException("Could not load timetable for validation.");
+
         var studentEnrollments =
             await enrollmentRepository.GetEnrollmentsForStudentAsync(student.Id, classToEnroll.TimetableId);
 
-        var studentSchedule = studentEnrollments
-            .SelectMany(e => e.Class.ClassOccurrences)
-            .ToHashSet(new ClassOccurrenceComparer());
 
-        var newClassSchedule = classToEnroll.ClassOccurrences
-            .ToHashSet(new ClassOccurrenceComparer());
+        var scheduledItems = studentEnrollments.Select(e => e.Class).ToList();
 
-        if (newClassSchedule.Overlaps(studentSchedule))
+
+        var availabilityMatrix = new ResourceAvailabilityMatrix(timetable, scheduledItems);
+
+        if (availabilityMatrix.HasClash(classToEnroll))
         {
             throw new ValidationException("Enrollment failed due to a time clash with an existing class.");
         }
     }
 
-    // TODO: implement overlapped classes scenario
-    private class ClassOccurrenceComparer : IEqualityComparer<ClassOccurrenceEntity>
+    private async Task ValidateCapacity(ClassEntity classToEnroll)
     {
-        public bool Equals(ClassOccurrenceEntity? x, ClassOccurrenceEntity? y)
+        var currentEnrollmentCount = await enrollmentRepository.CountByClassIdAsync(classToEnroll.Id);
+        if (currentEnrollmentCount >= classToEnroll.Capacity)
         {
-            if (ReferenceEquals(x, y)) return true;
-            if (x is null || y is null) return false;
-            return x.Date == y.Date && x.StartPeriodId == y.StartPeriodId;
+            throw new ValidationException(
+                $"Class '{classToEnroll.Course.Name}' is full. Capacity is {classToEnroll.Capacity}.");
         }
+    }
 
-        public int GetHashCode(ClassOccurrenceEntity obj)
-        {
-            return HashCode.Combine(obj.Date, obj.StartPeriodId);
-        }
+    private Task ValidatePrerequisites(StudentEntity student, int courseId)
+    {
+        return Task.CompletedTask;
     }
 }

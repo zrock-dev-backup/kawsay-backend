@@ -22,4 +22,9 @@ public class EnrollmentRepository(KawsayDbContext context) : IEnrollmentReposito
             .AsNoTracking()
             .ToListAsync();
     }
+
+    public async Task<int> CountByClassIdAsync(int classId)
+    {
+        return await context.Enrollments.CountAsync(e => e.ClassId == classId);
+    }
 }

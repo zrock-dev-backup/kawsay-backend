@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using Domain.Enums;
+using Domain.Interfaces;
 
 namespace Domain.Entities;
 
-public class ClassEntity
+public class ClassEntity : ISchedulable
 {
     [Key] public int Id { get; set; }
 

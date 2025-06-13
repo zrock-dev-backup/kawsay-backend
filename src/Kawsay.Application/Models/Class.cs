@@ -14,6 +14,7 @@ public class Class
     public ClassTypeDto ClassType { get; set; }
     public int Length { get; set; }
     public int Frequency { get; set; }
+    public int Capacity { get; set; }
     public ICollection<ClassOccurrenceDto> ClassOccurrences { get; set; } = new List<ClassOccurrenceDto>();
     public ICollection<PeriodPreferenceEntity> PeriodPreferences { get; set; } = new List<PeriodPreferenceEntity>();
 }
