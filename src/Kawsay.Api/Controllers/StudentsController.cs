@@ -1,4 +1,3 @@
-#if DEBUG || STAGING
 using Application.DTOs;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
@@ -57,4 +56,3 @@ public class StudentsController(IStudentRepository studentRepository) : Controll
         return Ok(dto);
     }
 }
-#endif

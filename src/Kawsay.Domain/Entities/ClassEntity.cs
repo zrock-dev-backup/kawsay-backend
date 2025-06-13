@@ -20,7 +20,7 @@ public class ClassEntity
     public TeacherEntity? Teacher { get; set; } = default!;
 
     [Required] public int Frequency { get; set; }
-
+    [Required] public int Capacity { get; set; }
     [Required] public int Length { get; set; }
 
     [Required] public ClassType ClassType { get; set; }
