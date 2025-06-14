@@ -63,7 +63,7 @@
           default = self.packages.${system}.development;
 
           dockerImage = pkgs.dockerTools.buildImage {
-            name = "1kawsay/kawsay-backend";
+            name = "1kawsay/backend";
             tag = "latest";
             copyToRoot = self.packages.${system}.production;
             config = {
@@ -131,6 +131,7 @@
                 echo "Error: KAWSAY_CONNECTION_STRING environment variable is not set."
                 exit 1
               fi
+              exec elvish
           '';
 
           DOTNET_CLI_TELEMETRY_OPTOUT = "1";
@@ -139,9 +140,22 @@
         };
 
         apps = {
-          default = flake-utils.lib.mkApp {
-            drv = self.packages.${system}.development;
-            exePath = "/bin/Api";
+          dev = flake-utils.lib.mkApp {
+            drv = pkgs.writeShellApplication {
+              name = "kawsay-frontend-dev";
+              runtimeInputs = with pkgs; [
+                dotnetCorePackages.sdk_8_0
+              ];
+              text = ''
+                launch_terminal() {
+                  local cmd="dotnet run --project src/Kawsay.Api/Api.csproj"
+                  nohup alacritty --command sh -c "$cmd; read -p 'Press Enter to close...'" &> /dev/null &
+                }
+
+                echo "Starting development server in new terminal..."
+                launch_terminal
+                '';
+            };
           };
 
           generateDeps = flake-utils.lib.mkApp {
@@ -151,6 +165,7 @@
           migrate = flake-utils.lib.mkApp {
             drv = self.packages.${system}.migrate;
           };
+          default = self.apps.${system}.dev;
         };
 
         formatter = pkgs.nixpkgs-fmt;
