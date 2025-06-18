@@ -46,7 +46,6 @@ builder.Services.AddScoped<ConfigurationService>();
 builder.Services.AddScoped<CourseService>();
 builder.Services.AddScoped<EndofModuleService>();
 builder.Services.AddScoped<EnrollmentService>();
-builder.Services.AddScoped<SchedulingService>();
 builder.Services.AddScoped<TeacherService>();
 builder.Services.AddScoped<TimetableService>();
 builder.Services.AddScoped<ICourseRequirementService, CourseRequirementService>();
