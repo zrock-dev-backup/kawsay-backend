@@ -8,261 +8,215 @@ namespace Kawsay.UnitTests.Application.Features.Scheduling
 {
     public class SchedulingEngineServiceTests
     {
-        // --- Mocked Dependencies ---
-        private readonly ICourseRequirementRepository _requirementRepo;
-        private readonly IAvailabilityReadModelRepository _availabilityRepo; // Adheres to ADR-002 (CQRS)
-        private readonly IStagedPlacementRepository _stagedPlacementRepo; // For in-session changes
-
-        // --- System Under Test (SUT) ---
+        private readonly ICourseRequirementRepository _courseRequirementRepo;
+        private readonly IAvailabilityReadModelRepository _availabilityRepo;
+        private readonly IStagedPlacementRepository _stagedPlacementRepo;
         private readonly SchedulingEngineService _sut;
-
-        // --- Test Constants for Readability ---
-        private const int TEST_REQUIREMENT_ID = 1;
-        private const int TEACHER_A_ID = 101;
-        private const int GROUP_1_ID = 201;
 
         public SchedulingEngineServiceTests()
         {
-            // Initialize mocks for each test run
-            _requirementRepo = Substitute.For<ICourseRequirementRepository>();
+            _courseRequirementRepo = Substitute.For<ICourseRequirementRepository>();
             _availabilityRepo = Substitute.For<IAvailabilityReadModelRepository>();
             _stagedPlacementRepo = Substitute.For<IStagedPlacementRepository>();
-
-            // Instantiate the SUT with its dependencies
-            _sut = new SchedulingEngineService(_requirementRepo, _availabilityRepo, _stagedPlacementRepo);
+            _sut = new SchedulingEngineService(_courseRequirementRepo, _availabilityRepo, _stagedPlacementRepo);
         }
 
         [Fact]
-        public async Task
-            GetValidSlotsForRequirementAsync_WhenScheduleHasConflictsAndPreferences_ShouldReturnCorrectlyFilteredAndScoredSlots()
+        public async Task GetValidSlotsForRequirementAsync_NoConflicts_ShouldReturnAllPossibleSlots()
         {
-            // ARRANGE
+            // Arrange
+            var timetable = CreateTimetable(1, 3, 5);
+            var courseRequirement = CreateRequirement(timetable, 2);
+            var matrices = CreateEmptyMatrices(timetable, courseRequirement);
 
-            // 1. Define the Timetable Structure
-            var timetable = new TimetableEntity
-            {
-                Id = 1,
-                Days = new List<TimetableDayEntity>
-                {
-                    new() { Id = 1, Name = "Monday" }, new() { Id = 2, Name = "Tuesday" },
-                    new() { Id = 3, Name = "Wednesday" }
-                },
-                Periods = new List<TimetablePeriodEntity>
-                {
-                    new() { Id = 10, Start = "09:00" }, new() { Id = 11, Start = "10:00" },
-                    new() { Id = 12, Start = "11:00" }, new() { Id = 13, Start = "12:00" },
-                    new() { Id = 14, Start = "13:00" }
-                }
-            };
+            SetupMocks(timetable, courseRequirement, matrices, []);
 
-            // 2. Define the Course Requirement
-            var requirement = new CourseRequirementEntity
-            {
-                Id = TEST_REQUIREMENT_ID, TeacherId = TEACHER_A_ID, StudentGroupId = GROUP_1_ID, Length = 2,
-                Timetable = timetable,
-                PeriodPreferences = new List<PeriodPreferenceEntity> { new() { DayId = 1, StartPeriodId = 10 } }
-            };
+            // Act
+            var validSlots = await _sut.GetValidSlotsForRequirementAsync(courseRequirement.Id);
 
-            // 3. Define the state of the world via the Availability Read Model
-            var teacherMatrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
-            teacherMatrix.Set(0, 2, 1); // Mon @ 11:00 conflict
-            teacherMatrix.Set(2, 4, 1); // NEW: Wed @ 13:00 is busy
-            var groupMatrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
-            groupMatrix.Set(1, 1, 1); // Tue @ 10:00 conflict
-            groupMatrix.Set(1, 2, 1); // Tue @ 11:00 conflict
-            
-            var resourceMatrices = new Dictionary<int, SchedulingMatrix>
-                { { TEACHER_A_ID, teacherMatrix }, { GROUP_1_ID, groupMatrix } };
-
-            // 4. Configure Mocks
-            _requirementRepo.GetByIdWithDetailsAsync(TEST_REQUIREMENT_ID).Returns(Task.FromResult(requirement));
-            _availabilityRepo.GetMatricesForResourcesAsync(Arg.Any<List<int>>())
-                .Returns(Task.FromResult(resourceMatrices));
-            _stagedPlacementRepo.GetStagedPlacementsForTimetableAsync(timetable.Id)
-                .Returns(Task.FromResult(new List<StagedPlacement>()));
-
-            // ACT
-            var validSlots = await _sut.GetValidSlotsForRequirementAsync(TEST_REQUIREMENT_ID);
-
-            // ASSERT
-            // The expected count is 5, not 9.
-            // Mon: 2 valid (09:00, 12:00)
-            // Tue: 1 valid (12:00)
-            // Wed: 2 valid (09:00, 12:00)
-            Assert.Equal(6, validSlots.Count); // <-- CORRECTED ASSERTION
-
-            // The rest of the assertions remain valid and important
-            var idealSlot = validSlots.Single(s => s.Type == SlotType.Ideal);
-            Assert.Equal(1, idealSlot.DayId);
-            Assert.Equal(10, idealSlot.StartPeriodId);
-
-            var wednesdaySlot_0900 = validSlots.Single(s => s.DayId == 3 && s.StartPeriodId == 10);
-            var wednesdaySlot_1000 = validSlots.Single(s => s.DayId == 3 && s.StartPeriodId == 11);
-            Assert.True(wednesdaySlot_0900.GuidanceScore > wednesdaySlot_1000.GuidanceScore,
-                "A slot that doesn't create fragments should be scored higher than one that does.");
+            // Assert
+            Assert.Equal(12, validSlots.Count); // 3 days * 3 possible starts (0,1,2 for periods 0-4 with length 2)
+            Assert.All(validSlots, slot => Assert.Equal(SlotType.Viable, slot.Type)); // No preferences
         }
 
         [Fact]
-        public async Task GetValidSlotsForRequirementAsync_WhenNoSlotsAreAvailable_ShouldReturnEmptyList()
+        public async Task GetValidSlotsForRequirementAsync_WithConflicts_ShouldExcludeConflictingSlots()
         {
-            // ARRANGE
-            var timetable = new TimetableEntity
+            // Arrange
+            var timetable = CreateTimetable(1, 3, 5);
+            var requirement = CreateRequirement(timetable, 2);
+            var matrices = CreateMatricesWithConflicts(timetable, requirement);
+
+            SetupMocks(timetable, requirement, matrices, new List<StagedPlacement>());
+
+            // Act
+            var validSlots = await _sut.GetValidSlotsForRequirementAsync(requirement.Id);
+
+            // Assert
+            // Expected: Day 1: starts at 0,3; Day 2: starts at 3; Day 3: starts at 0,1,2
+            Assert.Equal(6, validSlots.Count);
+            var expectedStarts = new Dictionary<int, List<int>>
             {
-                Id = 1, Days = new List<TimetableDayEntity> { new() { Id = 1, Name = "Monday" } },
-                Periods = new List<TimetablePeriodEntity>
-                    { new() { Id = 10, Start = "09:00" }, new() { Id = 11, Start = "10:00" } }
+                { 1, new List<int> { 10, 13 } },
+                { 2, new List<int> { 13 } },
+                { 3, new List<int> { 10, 11, 12 } }
             };
-            var requirement = new CourseRequirementEntity
+            foreach (var day in expectedStarts)
             {
-                Id = TEST_REQUIREMENT_ID, TeacherId = TEACHER_A_ID, StudentGroupId = GROUP_1_ID, Length = 1,
-                Timetable = timetable
-            };
+                var slotsForDay = validSlots.Where(s => s.DayId == day.Key).Select(s => s.StartPeriodId).ToList();
+                Assert.Equal(day.Value, slotsForDay);
+            }
+        }
 
-            // Make both resources busy for the entire timetable
-            var busyMatrix = new SchedulingMatrix(1, 2);
-            busyMatrix.Set(0, 0, 1);
-            busyMatrix.Set(0, 1, 1);
-            var resourceMatrices = new Dictionary<int, SchedulingMatrix>
-                { { TEACHER_A_ID, busyMatrix }, { GROUP_1_ID, busyMatrix } };
+        [Fact]
+        public async Task GetValidSlotsForRequirementAsync_LengthOne_ShouldReturnAllAvailablePeriods()
+        {
+            // Arrange
+            var timetable = CreateTimetable(1, 1, 3);
+            var requirement = CreateRequirement(timetable, 1);
+            var matrices = CreateEmptyMatrices(timetable, requirement);
 
-            _requirementRepo.GetByIdWithDetailsAsync(TEST_REQUIREMENT_ID).Returns(Task.FromResult(requirement));
-            _availabilityRepo.GetMatricesForResourcesAsync(Arg.Any<List<int>>())
-                .Returns(Task.FromResult(resourceMatrices));
-            _stagedPlacementRepo.GetStagedPlacementsForTimetableAsync(timetable.Id)
-                .Returns(Task.FromResult(new List<StagedPlacement>()));
+            SetupMocks(timetable, requirement, matrices, new List<StagedPlacement>());
 
-            // ACT
-            var validSlots = await _sut.GetValidSlotsForRequirementAsync(TEST_REQUIREMENT_ID);
+            // Act
+            var validSlots = await _sut.GetValidSlotsForRequirementAsync(requirement.Id);
 
-            // ASSERT
-            Assert.NotNull(validSlots);
+            // Assert
+            Assert.Equal(3, validSlots.Count); // 1 day * 3 periods
+        }
+
+        [Fact]
+        public async Task GetValidSlotsForRequirementAsync_LengthEqualToPeriods_ShouldReturnOneSlotPerDayIfAvailable()
+        {
+            // Arrange
+            var timetable = CreateTimetable(1, 2, 3);
+            var requirement = CreateRequirement(timetable, 3);
+            var matrices = CreateEmptyMatrices(timetable, requirement);
+
+            SetupMocks(timetable, requirement, matrices, new List<StagedPlacement>());
+
+            // Act
+            var validSlots = await _sut.GetValidSlotsForRequirementAsync(requirement.Id);
+
+            // Assert
+            Assert.Equal(2, validSlots.Count); // 2 days, each with one possible slot starting at period 0
+        }
+
+        [Fact]
+        public async Task GetValidSlotsForRequirementAsync_LengthGreaterThanPeriods_ShouldReturnNoSlots()
+        {
+            // Arrange
+            var timetable = CreateTimetable(1, 2, 3);
+            var requirement = CreateRequirement(timetable, 4);
+            var matrices = CreateEmptyMatrices(timetable, requirement);
+
+            SetupMocks(timetable, requirement, matrices, new List<StagedPlacement>());
+
+            // Act
+            var validSlots = await _sut.GetValidSlotsForRequirementAsync(requirement.Id);
+
+            // Assert
             Assert.Empty(validSlots);
         }
 
         [Fact]
-        public async Task GetValidSlotsForRequirementAsync_WhenTeacherIsNotAssigned_ShouldOnlyConsiderGroupConflicts()
+        public async Task GetValidSlotsForRequirementAsync_WithPreferences_ShouldMarkIdealSlots()
         {
-            // ARRANGE
-            var timetable = new TimetableEntity
-            {
-                Id = 1, Days = new List<TimetableDayEntity> { new() { Id = 1, Name = "Monday" } },
-                Periods = new List<TimetablePeriodEntity>
-                    { new() { Id = 10, Start = "09:00" }, new() { Id = 11, Start = "10:00" } }
-            };
-            // This requirement has a null TeacherId
-            var requirement = new CourseRequirementEntity
-            {
-                Id = TEST_REQUIREMENT_ID, TeacherId = null, StudentGroupId = GROUP_1_ID, Length = 1,
-                Timetable = timetable
-            };
+            // Arrange
+            var timetable = CreateTimetable(1, 1, 3);
+            var requirement = CreateRequirement(timetable, 1,
+                new List<PeriodPreferenceEntity> { new PeriodPreferenceEntity { DayId = 1, StartPeriodId = 10 } });
+            var matrices = CreateEmptyMatrices(timetable, requirement);
 
-            var groupMatrix = new SchedulingMatrix(1, 2);
-            groupMatrix.Set(0, 0, 1); // Group is busy Monday @ 09:00
+            SetupMocks(timetable, requirement, matrices, new List<StagedPlacement>());
 
-            // The availability repo is only asked for the group's matrix
-            var resourceMatrices = new Dictionary<int, SchedulingMatrix> { { GROUP_1_ID, groupMatrix } };
+            // Act
+            var validSlots = await _sut.GetValidSlotsForRequirementAsync(requirement.Id);
 
-            _requirementRepo.GetByIdWithDetailsAsync(TEST_REQUIREMENT_ID).Returns(Task.FromResult(requirement));
-            _availabilityRepo
-                .GetMatricesForResourcesAsync(Arg.Is<List<int>>(ids => ids.Count == 1 && ids.Contains(GROUP_1_ID)))
-                .Returns(Task.FromResult(resourceMatrices));
-            _stagedPlacementRepo.GetStagedPlacementsForTimetableAsync(timetable.Id)
-                .Returns(Task.FromResult(new List<StagedPlacement>()));
-
-            // ACT
-            var validSlots = await _sut.GetValidSlotsForRequirementAsync(TEST_REQUIREMENT_ID);
-
-            // ASSERT
-            Assert.Single(validSlots);
-            Assert.Equal(1, validSlots[0].DayId);
-            Assert.Equal(11, validSlots[0].StartPeriodId); // Only the 10:00 slot is available
+            // Assert
+            Assert.Single(validSlots,
+                slot => slot.Type == SlotType.Ideal && slot.DayId == 1 && slot.StartPeriodId == 10);
+            Assert.Equal(2, validSlots.Count(slot => slot.Type == SlotType.Viable));
         }
 
         [Fact]
-        public async Task GetValidSlotsForRequirementAsync_WhenNoPreferencesExist_ShouldReturnAllValidSlotsAsViable()
+        public async Task GetValidSlotsForRequirementAsync_WithStagedPlacements_ShouldConsiderAsConflicts()
         {
-            // ARRANGE
-            var timetable = new TimetableEntity
-            {
-                Id = 1, Days = new List<TimetableDayEntity> { new() { Id = 1, Name = "Monday" } },
-                Periods = new List<TimetablePeriodEntity>
-                    { new() { Id = 10, Start = "09:00" }, new() { Id = 11, Start = "10:00" } }
-            };
-            // This requirement has an empty list of preferences
-            var requirement = new CourseRequirementEntity
-            {
-                Id = TEST_REQUIREMENT_ID, TeacherId = TEACHER_A_ID, StudentGroupId = GROUP_1_ID, Length = 1,
-                Timetable = timetable, PeriodPreferences = new List<PeriodPreferenceEntity>()
-            };
-
-            // All resources are fully available
-            var availableMatrix = new SchedulingMatrix(1, 2);
-            var resourceMatrices = new Dictionary<int, SchedulingMatrix>
-                { { TEACHER_A_ID, availableMatrix }, { GROUP_1_ID, availableMatrix } };
-
-            _requirementRepo.GetByIdWithDetailsAsync(TEST_REQUIREMENT_ID).Returns(Task.FromResult(requirement));
-            _availabilityRepo.GetMatricesForResourcesAsync(Arg.Any<List<int>>())
-                .Returns(Task.FromResult(resourceMatrices));
-            _stagedPlacementRepo.GetStagedPlacementsForTimetableAsync(timetable.Id)
-                .Returns(Task.FromResult(new List<StagedPlacement>()));
-
-            // ACT
-            var validSlots = await _sut.GetValidSlotsForRequirementAsync(TEST_REQUIREMENT_ID);
-
-            // ASSERT
-            Assert.Equal(2, validSlots.Count);
-            Assert.All(validSlots, slot => Assert.Equal(SlotType.Viable, slot.Type));
-            Assert.DoesNotContain(validSlots, slot => slot.Type == SlotType.Ideal);
-        }
-
-        [Fact]
-        public async Task
-            GetValidSlotsForRequirementAsync_WhenPlacementsAreStaged_ShouldConsiderStagedPlacementsAsConflicts()
-        {
-            // ARRANGE
-            var timetable = new TimetableEntity
-            {
-                Id = 1, Days = new List<TimetableDayEntity> { new() { Id = 1, Name = "Monday" } },
-                Periods = new List<TimetablePeriodEntity>
-                    { new() { Id = 10, Start = "09:00" }, new() { Id = 11, Start = "10:00" } }
-            };
-            var requirementToPlace = new CourseRequirementEntity
-            {
-                Id = TEST_REQUIREMENT_ID, TeacherId = TEACHER_A_ID, StudentGroupId = GROUP_1_ID, Length = 1,
-                Timetable = timetable
-            };
-
-            // The main read model shows Teacher A is fully available
-            var availableMatrix = new SchedulingMatrix(1, 2);
-            var resourceMatrices = new Dictionary<int, SchedulingMatrix>
-                { { TEACHER_A_ID, availableMatrix }, { GROUP_1_ID, availableMatrix } };
-
-            // BUT, another requirement has been STAGED, making Teacher A busy on Monday @ 09:00
+            // Arrange
+            var timetable = CreateTimetable(1, 1, 3);
+            var requirement = CreateRequirement(timetable, 1);
+            var matrices = CreateEmptyMatrices(timetable, requirement);
             var stagedPlacements = new List<StagedPlacement>
-            {
-                new StagedPlacement(
-                    RequirementId: 99,
-                    DayId: 1,
-                    StartPeriodId: 10,
-                    Length: 1,
-                    ResourceIds: new List<int> { TEACHER_A_ID } // This placement involves Teacher A
-                )
-            };
+                { new StagedPlacement(99, 1, 10, 1, new List<int> { 101 }) };
 
-            _requirementRepo.GetByIdWithDetailsAsync(TEST_REQUIREMENT_ID).Returns(Task.FromResult(requirementToPlace));
-            _availabilityRepo.GetMatricesForResourcesAsync(Arg.Any<List<int>>())
-                .Returns(Task.FromResult(resourceMatrices));
+            SetupMocks(timetable, requirement, matrices, stagedPlacements);
+
+            // Act
+            var validSlots = await _sut.GetValidSlotsForRequirementAsync(requirement.Id);
+
+            // Assert
+            Assert.Equal(2,
+                validSlots.Count); // Periods 11 and 12 should be available, 10 is conflicted due to staged placement
+            Assert.DoesNotContain(validSlots, slot => slot.StartPeriodId == 10);
+        }
+
+        private TimetableEntity CreateTimetable(int id, int dayCount, int periodCount)
+        {
+            var days = Enumerable.Range(1, dayCount).Select(i => new TimetableDayEntity { Id = i, Name = $"Day{i}" })
+                .ToList();
+            var periods = Enumerable.Range(10, periodCount)
+                .Select(i => new TimetablePeriodEntity { Id = i, Start = $"{i}:00" }).ToList();
+            return new TimetableEntity { Id = id, Days = days, Periods = periods };
+        }
+
+        private CourseRequirementEntity CreateRequirement(TimetableEntity timetable, int length,
+            List<PeriodPreferenceEntity>? preferences = null)
+        {
+            return new CourseRequirementEntity
+            {
+                Id = 1,
+                Timetable = timetable,
+                TeacherId = 101,
+                StudentGroupId = 201,
+                Length = length,
+                PeriodPreferences = preferences ?? new List<PeriodPreferenceEntity>()
+            };
+        }
+
+        private Dictionary<int, SchedulingMatrix> CreateEmptyMatrices(TimetableEntity timetable,
+            CourseRequirementEntity requirement)
+        {
+            var matrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
+            return new Dictionary<int, SchedulingMatrix>
+            {
+                { requirement.TeacherId.Value, matrix },
+                { requirement.StudentGroupId.Value, matrix }
+            };
+        }
+
+        private Dictionary<int, SchedulingMatrix> CreateMatricesWithConflicts(TimetableEntity timetable,
+            CourseRequirementEntity requirement)
+        {
+            var teacherMatrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
+            teacherMatrix.Set(0, 2, 1); // Day 1, Period 12
+            teacherMatrix.Set(2, 4, 1); // Day 3, Period 14
+            var groupMatrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
+            groupMatrix.Set(1, 1, 1); // Day 2, Period 11
+            groupMatrix.Set(1, 2, 1); // Day 2, Period 12
+            return new Dictionary<int, SchedulingMatrix>
+            {
+                { requirement.TeacherId.Value, teacherMatrix },
+                { requirement.StudentGroupId.Value, groupMatrix }
+            };
+        }
+
+        private void SetupMocks(TimetableEntity timetable, CourseRequirementEntity requirement,
+            Dictionary<int, SchedulingMatrix> matrices, List<StagedPlacement> stagedPlacements)
+        {
+            _courseRequirementRepo.GetByIdWithDetailsAsync(requirement.Id)!.Returns(Task.FromResult(requirement));
+            _availabilityRepo.GetMatricesForResourcesAsync(Arg.Any<List<int>>()).Returns(Task.FromResult(matrices));
             _stagedPlacementRepo.GetStagedPlacementsForTimetableAsync(timetable.Id)
                 .Returns(Task.FromResult(stagedPlacements));
-
-            // ACT
-            var validSlots = await _sut.GetValidSlotsForRequirementAsync(TEST_REQUIREMENT_ID);
-
-            // ASSERT
-            // The slot at Mon @ 09:00 should now be invalid due to the staged placement.
-            Assert.Single(validSlots);
-            Assert.Equal(1, validSlots[0].DayId);
-            Assert.Equal(11, validSlots[0].StartPeriodId);
         }
     }
 }

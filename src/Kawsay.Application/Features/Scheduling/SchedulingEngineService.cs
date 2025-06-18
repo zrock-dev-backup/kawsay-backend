@@ -2,220 +2,209 @@ using Application.Features.Scheduling.Models;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
 
-namespace Application.Features.Scheduling;
-
-public class SchedulingEngineService
+namespace Application.Features.Scheduling
 {
-    private readonly ICourseRequirementRepository _requirementRepo;
-    private readonly IAvailabilityReadModelRepository _availabilityRepo;
-    private readonly IStagedPlacementRepository _stagedPlacementRepo;
-
-    public SchedulingEngineService(
+    public class SchedulingEngineService(
         ICourseRequirementRepository requirementRepo,
         IAvailabilityReadModelRepository availabilityRepo,
         IStagedPlacementRepository stagedPlacementRepo)
     {
-        _requirementRepo = requirementRepo;
-        _availabilityRepo = availabilityRepo;
-        _stagedPlacementRepo = stagedPlacementRepo;
-    }
-
-    public async Task<List<ValidSlotDto>> GetValidSlotsForRequirementAsync(int requirementId)
-    {
-        // 1. DATA GATHERING
-        var requirement = await _requirementRepo.GetByIdWithDetailsAsync(requirementId)
-                          ?? throw new KeyNotFoundException(
-                              $"CourseRequirement with ID {requirementId} not found.");
-
-        var resourceIds = GetResourceIdsForRequirement(requirement);
-        var baseMatrices = await _availabilityRepo.GetMatricesForResourcesAsync(resourceIds);
-        var stagedPlacements =
-            await _stagedPlacementRepo.GetStagedPlacementsForTimetableAsync(requirement.Timetable.Id);
-
-        // 2. MATRIX COMBINATION (Apply hard constraints)
-        var combinedMatrix = CombineAvailabilityMatrices(baseMatrices, requirement.Timetable);
-        ApplyStagedPlacementsAsConflicts(combinedMatrix, stagedPlacements, resourceIds, requirement.Timetable);
-
-        // 3. FILTERING AND SCORING PIPELINE
-        var validSlots = new List<ValidSlotDto>();
-        var dayMap = requirement.Timetable.Days.ToDictionary(d => d.Id);
-        var periodMap = requirement.Timetable.Periods.ToDictionary(p => p.Id);
-
-        // Create index maps for matrix operations
-        var dayIdToIndex = requirement.Timetable.Days.Select((d, i) => new { d.Id, Index = i })
-            .ToDictionary(x => x.Id, x => x.Index);
-        var periodIdToIndex = requirement.Timetable.Periods.Select((p, i) => new { p.Id, Index = i })
-            .ToDictionary(x => x.Id, x => x.Index);
-
-        foreach (var day in requirement.Timetable.Days)
+        public async Task<List<ValidSlotDto>> GetValidSlotsForRequirementAsync(int requirementId)
         {
-            foreach (var period in requirement.Timetable.Periods)
+            var requirement = await requirementRepo.GetByIdWithDetailsAsync(requirementId)
+                              ?? throw new KeyNotFoundException(
+                                  $"CourseRequirement with ID {requirementId} not found.");
+
+            var resourceIds = GetResourceIdsForRequirement(requirement);
+            var baseMatrices = await availabilityRepo.GetMatricesForResourcesAsync(resourceIds);
+            var stagedPlacements =
+                await stagedPlacementRepo.GetStagedPlacementsForTimetableAsync(requirement.Timetable.Id);
+
+            var combinedMatrix = CombineAvailabilityMatrices(baseMatrices, requirement.Timetable);
+            ApplyStagedPlacementsAsConflicts(combinedMatrix, stagedPlacements, resourceIds, requirement.Timetable);
+
+            var validSlots = new List<ValidSlotDto>();
+            var dayIdToIndex = requirement.Timetable.Days.Select((d, i) => new { d.Id, Index = i })
+                .ToDictionary(x => x.Id, x => x.Index);
+            var periodIndexToId = requirement.Timetable.Periods.Select((p, i) => new { p.Id, Index = i })
+                .ToDictionary(x => x.Index, x => x.Id);
+            var periodIdToIndex = requirement.Timetable.Periods.Select((p, i) => new { p.Id, Index = i })
+                .ToDictionary(x => x.Id, x => x.Index);
+
+            foreach (var day in requirement.Timetable.Days)
             {
-                if (IsSlotValid(day.Id, period.Id, requirement, combinedMatrix, dayIdToIndex, periodIdToIndex))
+                int dayIndex = dayIdToIndex[day.Id];
+                var validStarts = FindValidStartingIndices(combinedMatrix, dayIndex, requirement.Length,
+                    requirement.Timetable.Periods.Count);
+
+                foreach (var startIndex in validStarts)
                 {
-                    var slotType = IsSlotPreferred(day.Id, period.Id, requirement)
+                    int startPeriodId = periodIndexToId[startIndex];
+                    var slotType = IsSlotPreferred(day.Id, startPeriodId, requirement)
                         ? SlotType.Ideal
                         : SlotType.Viable;
-                    var guidanceScore = CalculateGuidanceScore(day.Id, period.Id, requirement, baseMatrices,
+                    var guidanceScore = CalculateGuidanceScore(day.Id, startPeriodId, requirement, baseMatrices,
                         slotType, dayIdToIndex, periodIdToIndex);
-
                     validSlots.Add(new ValidSlotDto
                     {
                         DayId = day.Id,
-                        StartPeriodId = period.Id,
+                        StartPeriodId = startPeriodId,
                         Type = slotType,
                         GuidanceScore = guidanceScore
                     });
                 }
             }
+
+            return validSlots;
         }
 
-        return validSlots;
-    }
-
-    private List<int> GetResourceIdsForRequirement(CourseRequirementEntity requirement)
-    {
-        var resourceIds = new List<int>();
-        if (requirement.TeacherId.HasValue)
+        private List<int> GetResourceIdsForRequirement(CourseRequirementEntity requirement)
         {
-            resourceIds.Add(requirement.TeacherId.Value);
+            var resourceIds = new List<int>();
+            if (requirement.TeacherId.HasValue)
+            {
+                resourceIds.Add(requirement.TeacherId.Value);
+            }
+
+            if (requirement.StudentGroupId.HasValue)
+            {
+                resourceIds.Add(requirement.StudentGroupId.Value);
+            }
+
+            return resourceIds;
         }
 
-        if (requirement.StudentGroupId.HasValue)
+        private SchedulingMatrix CombineAvailabilityMatrices(Dictionary<int, SchedulingMatrix> resourceMatrices,
+            TimetableEntity timetable)
         {
-            resourceIds.Add(requirement.StudentGroupId.Value);
-        }
+            if (resourceMatrices.Count == 0)
+            {
+                return new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
+            }
 
-        return resourceIds;
-    }
+            var firstMatrix = resourceMatrices.Values.First();
+            var combined = new SchedulingMatrix(firstMatrix.Rows, firstMatrix.Columns);
 
-    private SchedulingMatrix CombineAvailabilityMatrices(Dictionary<int, SchedulingMatrix> resourceMatrices,
-        TimetableEntity timetable)
-    {
-        var combined = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
-        foreach (var matrix in resourceMatrices.Values)
-        {
             for (int r = 0; r < combined.Rows; r++)
             {
                 for (int c = 0; c < combined.Columns; c++)
                 {
-                    if (matrix.Get(r, c) == 1)
+                    bool isBusy = resourceMatrices.Values.Any(m => m.Get(r, c) == 1);
+                    combined.Set(r, c, isBusy ? 1 : 0);
+                }
+            }
+
+            return combined;
+        }
+
+        private void ApplyStagedPlacementsAsConflicts(SchedulingMatrix matrix, List<StagedPlacement> stagedPlacements,
+            List<int> requiredResourceIds, TimetableEntity timetable)
+        {
+            var dayIdToIndex = timetable.Days
+                .Select((d, index) => new { d.Id, index })
+                .ToDictionary(x => x.Id, x => x.index);
+
+            var periodIdToIndex = timetable.Periods
+                .Select((p, index) => new { p.Id, index })
+                .ToDictionary(x => x.Id, x => x.index);
+
+            foreach (var placement in stagedPlacements)
+            {
+                if (placement.ResourceIds.Any(id => requiredResourceIds.Contains(id)))
+                {
+                    int dayIndex = dayIdToIndex[placement.DayId];
+                    int startPeriodIndex = periodIdToIndex[placement.StartPeriodId];
+                    for (int i = 0; i < placement.Length; i++)
                     {
-                        combined.Set(r, c, 1);
+                        matrix.Set(dayIndex, startPeriodIndex + i, 1);
                     }
                 }
             }
         }
 
-        return combined;
-    }
-
-    private void ApplyStagedPlacementsAsConflicts(SchedulingMatrix matrix, List<StagedPlacement> stagedPlacements,
-        List<int> requiredResourceIds, TimetableEntity timetable)
-    {
-        var dayIdToIndex = timetable.Days.Select((d, i) => new { d.Id, Index = i })
-            .ToDictionary(x => x.Id, x => x.Index);
-        var periodIdToIndex = timetable.Periods.Select((p, i) => new { p.Id, Index = i })
-            .ToDictionary(x => x.Id, x => x.Index);
-
-        foreach (var placement in stagedPlacements)
+        private List<int> FindValidStartingIndices(SchedulingMatrix matrix, int dayIndex, int length, int periodCount)
         {
-            // If the staged placement involves any of the resources we need, it's a conflict.
-            if (placement.ResourceIds.Any(id => requiredResourceIds.Contains(id)))
-            {
-                int dayIndex = dayIdToIndex[placement.DayId];
-                int startPeriodIndex = periodIdToIndex[placement.StartPeriodId];
+            var validStarts = new List<int>();
+            if (length > periodCount) return validStarts;
 
-                for (int i = 0; i < placement.Length; i++)
-                {
-                    matrix.Set(dayIndex, startPeriodIndex + i, 1); // Mark as busy
-                }
+            int windowSum = 0;
+            for (int i = 0; i < length; i++)
+            {
+                windowSum += matrix.Get(dayIndex, i);
             }
-        }
-    }
 
-    private bool IsSlotValid(int dayId, int startPeriodId, CourseRequirementEntity requirement,
-        SchedulingMatrix combinedMatrix, Dictionary<int, int> dayMap, Dictionary<int, int> periodMap)
-    {
-        if (!dayMap.ContainsKey(dayId) || !periodMap.ContainsKey(startPeriodId)) return false;
-
-        int dayIndex = dayMap[dayId];
-        int startPeriodIndex = periodMap[startPeriodId];
-
-        if (startPeriodIndex + requirement.Length > combinedMatrix.Columns) return false; // Doesn't fit in the day
-
-        for (int i = 0; i < requirement.Length; i++)
-        {
-            if (combinedMatrix.Get(dayIndex, startPeriodIndex + i) == 1)
+            if (windowSum == 0)
             {
-                return false; // Conflict found
+                validStarts.Add(0);
             }
-        }
 
-        return true;
-    }
-
-    private bool IsSlotPreferred(int dayId, int startPeriodId, CourseRequirementEntity requirement)
-    {
-        return requirement.PeriodPreferences.Any(p => p.DayId == dayId && p.StartPeriodId == startPeriodId);
-    }
-
-    private double CalculateGuidanceScore(int dayId, int startPeriodId, CourseRequirementEntity requirement,
-        Dictionary<int, SchedulingMatrix> resourceMatrices, SlotType slotType, Dictionary<int, int> dayMap,
-        Dictionary<int, int> periodMap)
-    {
-        double score = (slotType == SlotType.Ideal) ? 100.0 : 50.0;
-
-        int dayIndex = dayMap[dayId];
-        int startPeriodIndex = periodMap[startPeriodId];
-        int endPeriodIndex = startPeriodIndex + requirement.Length - 1;
-
-        foreach (var resourceId in resourceMatrices.Keys)
-        {
-            var matrix = resourceMatrices[resourceId];
-
-            // Heuristic 1: Contiguity Bonus (reward slots next to existing events)
-            if (matrix.Get(dayIndex, startPeriodIndex - 1) == 1) score += 10.0;
-            if (matrix.Get(dayIndex, endPeriodIndex + 1) == 1) score += 10.0;
-
-            // Heuristic 2: Fragmentation Penalty (penalize creating small, unusable free blocks)
-            // Check the block of free time BEFORE this placement
-            if (matrix.Get(dayIndex, startPeriodIndex - 1) == 0) // Is there a free block before?
+            for (int j = 1; j <= periodCount - length; j++)
             {
-                int freeBlockSize =
-                    GetAdjacentFreeBlockSize(matrix, dayIndex, startPeriodIndex - 1, lookLeft: true);
-                if (freeBlockSize > 0 && freeBlockSize < requirement.Length)
+                windowSum -= matrix.Get(dayIndex, j - 1);
+                windowSum += matrix.Get(dayIndex, j + length - 1);
+                if (windowSum == 0)
                 {
-                    score -= 25.0; // Penalize for leaving a small fragment
+                    validStarts.Add(j);
                 }
             }
 
-            // Check the block of free time AFTER this placement
-            if (matrix.Get(dayIndex, endPeriodIndex + 1) == 0) // Is there a free block after?
+            return validStarts;
+        }
+
+        private bool IsSlotPreferred(int dayId, int startPeriodId, CourseRequirementEntity requirement)
+        {
+            return requirement.PeriodPreferences.Any(p => p.DayId == dayId && p.StartPeriodId == startPeriodId);
+        }
+
+        private double CalculateGuidanceScore(int dayId, int startPeriodId, CourseRequirementEntity requirement,
+            Dictionary<int, SchedulingMatrix> resourceMatrices, SlotType slotType, Dictionary<int, int> dayIdToIndex,
+            Dictionary<int, int> periodIdToIndex)
+        {
+            double score = (slotType == SlotType.Ideal) ? 100.0 : 50.0;
+
+            int dayIndex = dayIdToIndex[dayId];
+            int startPeriodIndex = periodIdToIndex[startPeriodId];
+            int endPeriodIndex = startPeriodIndex + requirement.Length - 1;
+
+            foreach (var resourceId in resourceMatrices.Keys)
             {
-                int freeBlockSize = GetAdjacentFreeBlockSize(matrix, dayIndex, endPeriodIndex + 1, lookLeft: false);
-                if (freeBlockSize > 0 && freeBlockSize < requirement.Length)
+                var matrix = resourceMatrices[resourceId];
+
+                if (startPeriodIndex > 0 && matrix.Get(dayIndex, startPeriodIndex - 1) == 1)
+                    score += 10.0;
+                if (endPeriodIndex < matrix.Columns - 1 && matrix.Get(dayIndex, endPeriodIndex + 1) == 1)
+                    score += 10.0;
+
+                if (startPeriodIndex > 0 && matrix.Get(dayIndex, startPeriodIndex - 1) == 0)
                 {
-                    score -= 25.0; // Penalize for leaving a small fragment
+                    int freeBlockSize = GetAdjacentFreeBlockSize(matrix, dayIndex, startPeriodIndex - 1, true);
+                    if (freeBlockSize > 0 && freeBlockSize < requirement.Length)
+                        score -= 25.0;
+                }
+
+                if (endPeriodIndex < matrix.Columns - 1 && matrix.Get(dayIndex, endPeriodIndex + 1) == 0)
+                {
+                    int freeBlockSize = GetAdjacentFreeBlockSize(matrix, dayIndex, endPeriodIndex + 1, false);
+                    if (freeBlockSize > 0 && freeBlockSize < requirement.Length)
+                        score -= 25.0;
                 }
             }
+
+            return score;
         }
 
-        return score;
-    }
-
-    private int GetAdjacentFreeBlockSize(SchedulingMatrix matrix, int dayIndex, int startPeriodIndex, bool lookLeft)
-    {
-        int size = 0;
-        int currentPeriod = startPeriodIndex;
-        int increment = lookLeft ? -1 : 1;
-
-        while (matrix.Get(dayIndex, currentPeriod) == 0)
+        private int GetAdjacentFreeBlockSize(SchedulingMatrix matrix, int dayIndex, int startPeriodIndex, bool lookLeft)
         {
-            size++;
-            currentPeriod += increment;
-        }
+            int size = 0;
+            int currentPeriod = startPeriodIndex;
+            int increment = lookLeft ? -1 : 1;
+            while (currentPeriod >= 0 && currentPeriod < matrix.Columns && matrix.Get(dayIndex, currentPeriod) == 0)
+            {
+                size++;
+                currentPeriod += increment;
+            }
 
-        return size;
+            return size;
+        }
     }
 }
