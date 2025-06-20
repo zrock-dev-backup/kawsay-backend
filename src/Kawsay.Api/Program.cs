@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Application.Features.Scheduling;
 using Application.Interfaces.Persistence;
+using Application.Interfaces.Services;
 using Application.Services;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
@@ -15,7 +16,6 @@ Console.WriteLine($"[DEBUG] Environment Name: '{envName}'");
 Console.WriteLine($"[DEBUG] Content Root Path: '{contentRoot}'");
 Console.WriteLine($"[DEBUG] Connection String: '{connStr}'");
 
-builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<KawsayDbContext>(options =>
@@ -25,7 +25,8 @@ builder.Services.AddDbContext<KawsayDbContext>(options =>
         b => b.MigrationsAssembly(typeof(KawsayDbContext).Assembly.FullName)
     );
 });
-
+builder.Services.AddScoped<ICourseRequirementRepository, CourseRequirementRepository>();
+builder.Services.AddScoped<IAvailabilityReadModelRepository, AvailabilityReadModelRepository>();
 builder.Services.AddScoped<IAcademicStructureRepository, AcademicStructureRepository>();
 builder.Services.AddScoped<IClassOccurrenceRepository, ClassOccurrenceRepository>();
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
@@ -48,6 +49,8 @@ builder.Services.AddScoped<EnrollmentService>();
 builder.Services.AddScoped<SchedulingService>();
 builder.Services.AddScoped<TeacherService>();
 builder.Services.AddScoped<TimetableService>();
+builder.Services.AddScoped<ICourseRequirementService, CourseRequirementService>();
+builder.Services.AddScoped<ISchedulingEngineService, SchedulingEngineService>();
 
 builder.Services.AddCors(options =>
 {
@@ -59,10 +62,19 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddControllers().AddJsonOptions(options =>
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<Api.Filters.ValidationFilterAttribute>();
+})
+.ConfigureApiBehaviorOptions(options =>
+{
+    options.SuppressModelStateInvalidFilter = true;
+})
+.AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
+
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())

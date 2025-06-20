@@ -24,6 +24,7 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
     public DbSet<HolidayEntity> Holidays { get; set; }
     public DbSet<ClassTypeConfigurationEntity> ClassTypeConfigurations { get; set; }
     public DbSet<TeacherQualificationEntity> TeacherQualifications { get; set; }
+    public DbSet<CourseRequirementEntity> CourseRequirements { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -191,5 +192,56 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
         modelBuilder.Entity<ClassTypeConfigurationEntity>()
             .Property(c => c.ClassType)
             .HasConversion<string>();
+        
+        modelBuilder.Entity<CourseRequirementEntity>(entity =>
+        {
+            entity.HasOne(cr => cr.Timetable)
+                .WithMany()
+                .HasForeignKey(cr => cr.TimetableId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(cr => cr.Course)
+                .WithMany()
+                .HasForeignKey(cr => cr.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(cr => cr.StudentGroup)
+                .WithMany()
+                .HasForeignKey(cr => cr.StudentGroupId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(cr => cr.Section)
+                .WithMany()
+                .HasForeignKey(cr => cr.SectionId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(cr => cr.PreferredTeacher)
+                .WithMany()
+                .HasForeignKey(cr => cr.PreferredTeacherId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(cr => cr.Priority).HasConversion<string>();
+            entity.Property(cr => cr.Status).HasConversion<string>();
+
+            entity.OwnsOne(cr => cr.EffectiveDateRange, ownedNavigationBuilder =>
+            {
+                ownedNavigationBuilder.Property(dr => dr.StartDate).HasColumnName("StartDate");
+                ownedNavigationBuilder.Property(dr => dr.EndDate).HasColumnName("EndDate");
+            });
+
+            entity.HasMany(cr => cr.SoftPreferences)
+                .WithOne(sp => sp.CourseRequirement)
+                .HasForeignKey(sp => sp.CourseRequirementId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        
+        modelBuilder.Entity<SoftSchedulingPreferenceEntity>(entity =>
+        {
+            // Basic configuration, FK is already set up by the collection on CourseRequirementEntity
+            entity.HasIndex(sp => sp.CourseRequirementId);
+        });
     }
 }
