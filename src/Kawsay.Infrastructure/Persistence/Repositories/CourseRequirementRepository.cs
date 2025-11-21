@@ -16,6 +16,10 @@ public class CourseRequirementRepository(KawsayDbContext context) : ICourseRequi
     {
         return await context.CourseRequirements
             .Include(cr => cr.SoftPreferences)
+            .Include(cr => cr.Timetable)
+                .ThenInclude(t => t.Days)
+            .Include(cr => cr.Timetable)
+                .ThenInclude(t => t.Periods)
             .FirstOrDefaultAsync(cr => cr.Id == requirementId);
     }
 

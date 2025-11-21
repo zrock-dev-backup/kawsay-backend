@@ -3,15 +3,23 @@ using Application.DTOs;
 using Application.Models;
 using Application.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 
 namespace Api.Controllers;
 
 [ApiController]
-[Route("kawsay/[controller]")]
+[Route("kawsay/timetable")]
 public class TimetableController(
     TimetableService service,
     AcademicStructureService academicStructureService) : ControllerBase
 {
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<TimetableStructure>>> GetTimetables()
+    {
+        var timetables = await service.GetAllAsync();
+        return Ok(timetables.Select(MapToDto));
+    }
+
     [HttpPost]
     public async Task<ActionResult<TimetableStructure>> CreateTimetable([FromBody] CreateTimetableRequest request)
     {
@@ -41,27 +49,7 @@ public class TimetableController(
         };
         var createdTimetable = await service.CreateTimetableAsync(timetable);
 
-        var createdTimetableDto = new TimetableStructure
-        {
-            Id = createdTimetable.Id,
-            Name = createdTimetable.Name,
-            StartDate = createdTimetable.StartDate,
-            EndDate = createdTimetable.EndDate,
-            Days = createdTimetable.Days.Select(d => new TimetableDay
-                {
-                    Id = d.Id,
-                    Name = d.Name
-                })
-                .ToList(),
-            Periods = createdTimetable.Periods
-                .Select(p => new TimetablePeriod
-                {
-                    Id = p.Id,
-                    Start = p.Start,
-                    End = p.End
-                })
-                .ToList()
-        };
+        var createdTimetableDto = MapToDto(createdTimetable);
         return CreatedAtAction(nameof(GetTimetable), new { id = createdTimetableDto.Id }, createdTimetableDto);
     }
 
@@ -70,7 +58,33 @@ public class TimetableController(
     {
         var timetable = await service.GetByIdAsync(id);
         if (timetable == null) return NotFound();
-        var timetableDto = new TimetableStructure
+        return Ok(MapToDto(timetable));
+    }
+
+    [HttpGet("master")]
+    public async Task<ActionResult<TimetableStructure>> GetMasterTimetable()
+    {
+        var master = await service.GetMasterTimetableAsync();
+        return master == null ? NotFound(new { message = "No timetables are available." }) : Ok(MapToDto(master));
+    }
+
+    [HttpPost("{id:int}/publish")]
+    public async Task<ActionResult<TimetableStructure>> PublishTimetable(int id)
+    {
+        var published = await service.PublishTimetableAsync(id);
+        return published == null ? NotFound() : Ok(MapToDto(published));
+    }
+
+    [HttpGet("{timetableId:int}/cohorts")]
+    public async Task<ActionResult<IEnumerable<CohortDetailDto>>> GetCohortsForTimetable(int timetableId)
+    {
+        var cohorts = await academicStructureService.GetCohortsByTimetableAsync(timetableId);
+        return Ok(cohorts);
+    }
+
+    private static TimetableStructure MapToDto(Timetable timetable)
+    {
+        return new TimetableStructure
         {
             Id = timetable.Id,
             Name = timetable.Name,
@@ -82,7 +96,8 @@ public class TimetableController(
                     Name = d.Name
                 })
                 .ToList(),
-            Periods = timetable.Periods.Select(p => new TimetablePeriod
+            Periods = timetable.Periods
+                .Select(p => new TimetablePeriod
                 {
                     Id = p.Id,
                     Start = p.Start,
@@ -90,27 +105,5 @@ public class TimetableController(
                 })
                 .ToList()
         };
-
-        return Ok(timetableDto);
-    }
-
-    [HttpGet]
-    [Route("/kawsay/timetables")]
-    public async Task<ActionResult<IEnumerable<TimetableStructure>>> GetTimetables()
-    {
-        var timetables = await service.GetAllAsync();
-        return Ok(timetables.Select(t => new TimetableStructure { Id = t.Id, Name = t.Name }));
-    }
-
-    [HttpGet("{timetableId:int}/cohorts")]
-    public async Task<ActionResult<IEnumerable<CohortDetailDto>>> GetCohortsForTimetable(int timetableId)
-    {
-        var cohorts = await academicStructureService.GetCohortsByTimetableAsync(timetableId);
-        if (cohorts.Count == 0)
-        {
-            return NotFound(new { message = $"No cohorts found for timetable ID {timetableId}." });
-        }
-
-        return Ok(cohorts);
     }
 }

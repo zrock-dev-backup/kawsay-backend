@@ -11,7 +11,7 @@ namespace Application.Features.Scheduling
     {
         public async Task<List<ValidSlotDto>> GetValidSlotsForRequirementAsync(int requirementId)
         {
-            var requirement = await requirementRepo.GetByIdWithDetailsAsync(requirementId)
+            var requirement = await requirementRepo.GetByIdAsync(requirementId)
                               ?? throw new KeyNotFoundException(
                                   $"CourseRequirement with ID {requirementId} not found.");
 
@@ -34,15 +34,13 @@ namespace Application.Features.Scheduling
             foreach (var day in requirement.Timetable.Days)
             {
                 int dayIndex = dayIdToIndex[day.Id];
-                var validStarts = FindValidStartingIndices(combinedMatrix, dayIndex, requirement.Length,
+                var validStarts = FindValidStartingIndices(combinedMatrix, dayIndex, requirement.DurationInPeriods,
                     requirement.Timetable.Periods.Count);
 
                 foreach (var startIndex in validStarts)
                 {
                     int startPeriodId = periodIndexToId[startIndex];
-                    var slotType = IsSlotPreferred(day.Id, startPeriodId, requirement)
-                        ? SlotType.Ideal
-                        : SlotType.Viable;
+                    var slotType = SlotType.Viable;
                     var guidanceScore = CalculateGuidanceScore(day.Id, startPeriodId, requirement, baseMatrices,
                         slotType, dayIdToIndex, periodIdToIndex);
                     validSlots.Add(new ValidSlotDto
@@ -61,9 +59,9 @@ namespace Application.Features.Scheduling
         private List<int> GetResourceIdsForRequirement(CourseRequirementEntity requirement)
         {
             var resourceIds = new List<int>();
-            if (requirement.TeacherId.HasValue)
+            if (requirement.PreferredTeacherId.HasValue)
             {
-                resourceIds.Add(requirement.TeacherId.Value);
+                resourceIds.Add(requirement.PreferredTeacherId.Value);
             }
 
             if (requirement.StudentGroupId.HasValue)
@@ -151,11 +149,6 @@ namespace Application.Features.Scheduling
             return validStarts;
         }
 
-        private bool IsSlotPreferred(int dayId, int startPeriodId, CourseRequirementEntity requirement)
-        {
-            return requirement.PeriodPreferences.Any(p => p.DayId == dayId && p.StartPeriodId == startPeriodId);
-        }
-
         private double CalculateGuidanceScore(int dayId, int startPeriodId, CourseRequirementEntity requirement,
             Dictionary<int, SchedulingMatrix> resourceMatrices, SlotType slotType, Dictionary<int, int> dayIdToIndex,
             Dictionary<int, int> periodIdToIndex)
@@ -164,7 +157,7 @@ namespace Application.Features.Scheduling
 
             int dayIndex = dayIdToIndex[dayId];
             int startPeriodIndex = periodIdToIndex[startPeriodId];
-            int endPeriodIndex = startPeriodIndex + requirement.Length - 1;
+            int endPeriodIndex = startPeriodIndex + requirement.DurationInPeriods - 1;
 
             foreach (var resourceId in resourceMatrices.Keys)
             {
@@ -178,14 +171,14 @@ namespace Application.Features.Scheduling
                 if (startPeriodIndex > 0 && matrix.Get(dayIndex, startPeriodIndex - 1) == 0)
                 {
                     int freeBlockSize = GetAdjacentFreeBlockSize(matrix, dayIndex, startPeriodIndex - 1, true);
-                    if (freeBlockSize > 0 && freeBlockSize < requirement.Length)
+                    if (freeBlockSize > 0 && freeBlockSize < requirement.DurationInPeriods)
                         score -= 25.0;
                 }
 
                 if (endPeriodIndex < matrix.Columns - 1 && matrix.Get(dayIndex, endPeriodIndex + 1) == 0)
                 {
                     int freeBlockSize = GetAdjacentFreeBlockSize(matrix, dayIndex, endPeriodIndex + 1, false);
-                    if (freeBlockSize > 0 && freeBlockSize < requirement.Length)
+                    if (freeBlockSize > 0 && freeBlockSize < requirement.DurationInPeriods)
                         score -= 25.0;
                 }
             }

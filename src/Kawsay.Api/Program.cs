@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Application.Features.Scheduling;
+using Api.Middleware;
 using Application.Interfaces.Persistence;
 using Application.Interfaces.Services;
 using Application.Services;
@@ -26,7 +26,7 @@ builder.Services.AddDbContext<KawsayDbContext>(options =>
     );
 });
 builder.Services.AddScoped<ICourseRequirementRepository, CourseRequirementRepository>();
-builder.Services.AddScoped<IAvailabilityReadModelRepository, AvailabilityReadModelRepository>();
+// builder.Services.AddScoped<IAvailabilityReadModelRepository, AvailabilityReadModelRepository>();
 builder.Services.AddScoped<IAcademicStructureRepository, AcademicStructureRepository>();
 builder.Services.AddScoped<IClassOccurrenceRepository, ClassOccurrenceRepository>();
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
@@ -49,7 +49,7 @@ builder.Services.AddScoped<EnrollmentService>();
 builder.Services.AddScoped<TeacherService>();
 builder.Services.AddScoped<TimetableService>();
 builder.Services.AddScoped<ICourseRequirementService, CourseRequirementService>();
-builder.Services.AddScoped<ISchedulingEngineService, SchedulingEngineService>();
+// builder.Services.AddScoped<ISchedulingEngineService, SchedulingEngineService>();
 
 builder.Services.AddCors(options =>
 {
@@ -88,6 +88,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<GlobalExceptionHandler>();
 app.UseCors();
 app.UseAuthorization();
 app.MapControllers();

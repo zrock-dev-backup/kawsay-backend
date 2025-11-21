@@ -17,7 +17,10 @@ public class TimetableRepository(KawsayDbContext context) : ITimetableRepository
 
     public async Task<IEnumerable<TimetableEntity>> GetAllAsync()
     {
-        return await context.Timetables.ToListAsync();
+        return await context.Timetables
+            .Include(t => t.Days)
+            .Include(t => t.Periods)
+            .ToListAsync();
     }
 
     public async Task<TimetableEntity> AddAsync(TimetableEntity timetable)

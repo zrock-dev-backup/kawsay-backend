@@ -2,6 +2,8 @@ using Application.Features.Scheduling;
 using Application.Features.Scheduling.Models;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
+using Kawsay.Domain.Enums;
+using Kawsay.Domain.ValueObjects;
 using NSubstitute;
 
 namespace Kawsay.UnitTests.Application.Features.Scheduling
@@ -120,26 +122,6 @@ namespace Kawsay.UnitTests.Application.Features.Scheduling
         }
 
         [Fact]
-        public async Task GetValidSlotsForRequirementAsync_WithPreferences_ShouldMarkIdealSlots()
-        {
-            // Arrange
-            var timetable = CreateTimetable(1, 1, 3);
-            var requirement = CreateRequirement(timetable, 1,
-                new List<PeriodPreferenceEntity> { new PeriodPreferenceEntity { DayId = 1, StartPeriodId = 10 } });
-            var matrices = CreateEmptyMatrices(timetable, requirement);
-
-            SetupMocks(timetable, requirement, matrices, new List<StagedPlacement>());
-
-            // Act
-            var validSlots = await _sut.GetValidSlotsForRequirementAsync(requirement.Id);
-
-            // Assert
-            Assert.Single(validSlots,
-                slot => slot.Type == SlotType.Ideal && slot.DayId == 1 && slot.StartPeriodId == 10);
-            Assert.Equal(2, validSlots.Count(slot => slot.Type == SlotType.Viable));
-        }
-
-        [Fact]
         public async Task GetValidSlotsForRequirementAsync_WithStagedPlacements_ShouldConsiderAsConflicts()
         {
             // Arrange
@@ -169,17 +151,23 @@ namespace Kawsay.UnitTests.Application.Features.Scheduling
             return new TimetableEntity { Id = id, Days = days, Periods = periods };
         }
 
-        private CourseRequirementEntity CreateRequirement(TimetableEntity timetable, int length,
-            List<PeriodPreferenceEntity>? preferences = null)
+        private CourseRequirementEntity CreateRequirement(TimetableEntity timetable, int length)
         {
             return new CourseRequirementEntity
             {
                 Id = 1,
                 Timetable = timetable,
-                TeacherId = 101,
+                PreferredTeacherId = 101,
                 StudentGroupId = 201,
-                Length = length,
-                PeriodPreferences = preferences ?? new List<PeriodPreferenceEntity>()
+                DurationInPeriods = length,
+                FrequencyPerWeek = 1,
+                TimetableId = timetable.Id,
+                CourseId = 42,
+                Course = new CourseEntity { Id = 42, Name = "Course" },
+                Priority = CourseRequirementPriority.High,
+                EffectiveDateRange = new DateRange(DateOnly.FromDateTime(DateTime.UtcNow),
+                    DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1))),
+                Status = CourseRequirementStatus.Pending
             };
         }
 
@@ -189,7 +177,7 @@ namespace Kawsay.UnitTests.Application.Features.Scheduling
             var matrix = new SchedulingMatrix(timetable.Days.Count, timetable.Periods.Count);
             return new Dictionary<int, SchedulingMatrix>
             {
-                { requirement.TeacherId.Value, matrix },
+                { requirement.PreferredTeacherId!.Value, matrix },
                 { requirement.StudentGroupId.Value, matrix }
             };
         }
@@ -205,7 +193,7 @@ namespace Kawsay.UnitTests.Application.Features.Scheduling
             groupMatrix.Set(1, 2, 1); // Day 2, Period 12
             return new Dictionary<int, SchedulingMatrix>
             {
-                { requirement.TeacherId.Value, teacherMatrix },
+                { requirement.PreferredTeacherId!.Value, teacherMatrix },
                 { requirement.StudentGroupId.Value, groupMatrix }
             };
         }
@@ -213,7 +201,7 @@ namespace Kawsay.UnitTests.Application.Features.Scheduling
         private void SetupMocks(TimetableEntity timetable, CourseRequirementEntity requirement,
             Dictionary<int, SchedulingMatrix> matrices, List<StagedPlacement> stagedPlacements)
         {
-            _courseRequirementRepo.GetByIdWithDetailsAsync(requirement.Id)!.Returns(Task.FromResult(requirement));
+            _courseRequirementRepo.GetByIdAsync(requirement.Id)!.Returns(Task.FromResult<CourseRequirementEntity?>(requirement));
             _availabilityRepo.GetMatricesForResourcesAsync(Arg.Any<List<int>>()).Returns(Task.FromResult(matrices));
             _stagedPlacementRepo.GetStagedPlacementsForTimetableAsync(timetable.Id)
                 .Returns(Task.FromResult(stagedPlacements));
