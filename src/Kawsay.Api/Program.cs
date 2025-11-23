@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Api.Converters; // Add namespace
 using Api.Middleware;
 using Application.Interfaces.Persistence;
 using Application.Interfaces.Services;
@@ -72,6 +73,7 @@ builder.Services.AddControllers(options =>
 .AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.JsonSerializerOptions.Converters.Add(new DateOnlyJsonConverter());
 });
 
 
