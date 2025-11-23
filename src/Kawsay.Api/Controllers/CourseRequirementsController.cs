@@ -6,50 +6,60 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Controllers;
 
 [ApiController]
-[Route("kawsay")]
+[Route("kawsay/requirements")]
 public class CourseRequirementsController(ICourseRequirementService requirementService) : ControllerBase
 {
-    [HttpPost("timetables/{timetableId:int}/course-requirements")]
-    public async Task<IActionResult> CreateCourseRequirement(int timetableId, [FromBody] CreateCourseRequirementRequestDto request)
+    [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<CourseRequirementDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRequirements([FromQuery] int timetableId)
     {
-        var result = await requirementService.CreateCourseRequirementAsync(timetableId, request);
-        return result.IsSuccess
-            ? CreatedAtAction(nameof(GetCourseRequirement), new { requirementId = result.Value!.Id }, result.Value)
-            : HandleFailure(result.Error);
-    }
+        if (timetableId <= 0) return BadRequest(new { message = "timetableId is required." });
 
-    [HttpGet("course-requirements/{requirementId:int}")]
-    public async Task<IActionResult> GetCourseRequirement(int requirementId)
-    {
-        var result = await requirementService.GetCourseRequirementByIdAsync(requirementId);
-        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result.Error);
-    }
-
-    [HttpGet("timetables/{timetableId:int}/course-requirements")]
-    public async Task<IActionResult> GetCourseRequirementsForTimetable(int timetableId)
-    {
         var result = await requirementService.GetCourseRequirementsForTimetableAsync(timetableId);
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result.Error);
     }
 
-    [HttpPut("course-requirements/{requirementId:int}")]
-    public async Task<IActionResult> UpdateCourseRequirement(int requirementId, [FromBody] UpdateCourseRequirementRequestDto request)
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(CourseRequirementDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRequirement(int id)
     {
-        var result = await requirementService.UpdateCourseRequirementAsync(requirementId, request);
+        var result = await requirementService.GetCourseRequirementByIdAsync(id);
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result.Error);
     }
 
-    [HttpDelete("course-requirements/{requirementId:int}")]
-    public async Task<IActionResult> DeleteCourseRequirement(int requirementId)
+    [HttpPost]
+    [ProducesResponseType(typeof(CourseRequirementDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateRequirement([FromBody] CreateCourseRequirementRequestDto request)
     {
-        var result = await requirementService.DeleteCourseRequirementAsync(requirementId);
+        var result = await requirementService.CreateCourseRequirementAsync(request);
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetRequirement), new { id = result.Value!.Id }, result.Value)
+            : HandleFailure(result.Error);
+    }
+
+    [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(CourseRequirementDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateRequirement(int id, [FromBody] UpdateCourseRequirementRequestDto request)
+    {
+        var result = await requirementService.UpdateCourseRequirementAsync(id, request);
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result.Error);
+    }
+
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteRequirement(int id)
+    {
+        var result = await requirementService.DeleteCourseRequirementAsync(id);
         return result.IsSuccess ? NoContent() : HandleFailure(result.Error);
     }
 
-    [HttpPost("course-requirements/{requirementId:int}/available-slots")]
-    public async Task<IActionResult> GetAvailableSlots(int requirementId, [FromBody] AvailableSlotsRequestDto request)
+    [HttpPost("preflight-check")]
+    [ProducesResponseType(typeof(PreflightCheckResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> RunPreflightCheck([FromBody] CreateCourseRequirementRequestDto request)
     {
-        var result = await requirementService.GetAvailableSlotsForRequirementAsync(requirementId, request);
+        var result = await requirementService.RunPreflightCheckAsync(request);
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result.Error);
     }
 

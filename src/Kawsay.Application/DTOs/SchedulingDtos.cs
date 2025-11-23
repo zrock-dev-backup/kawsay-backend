@@ -1,15 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Kawsay.Domain.Enums;
 
 namespace Application.DTOs;
 
-public record SoftSchedulingPreferenceDto(
-    [Required(ErrorMessage = "PreferenceType is required")]
-    string PreferenceType,
-    [Required(ErrorMessage = "Preference Value is required")]
-    string Value,
-    int? Weight
-);
+// --- Request DTOs ---
 
 public record CourseRequirementBaseDto(
     [Required(ErrorMessage = "CourseId is required")]
@@ -30,18 +25,25 @@ public record CourseRequirementBaseDto(
     [Range(1, 7, ErrorMessage = "Frequency must be between 1 and 7 times per week")]
     int FrequencyPerWeek,
     int? RequiredCapacity,
-    List<SoftSchedulingPreferenceDto>? SoftPreferences
+    List<SoftSchedulingPreferenceDto>? SoftPreferences,
+    [Required]
+    ClassTypeDto ClassType
 );
 
 public record CreateCourseRequirementRequestDto : CourseRequirementBaseDto
 {
+    [Required]
+    public int TimetableId { get; init; }
+
     public CreateCourseRequirementRequestDto(
+        int TimetableId,
         int CourseId, int? StudentGroupId, int? SectionId, int? PreferredTeacherId,
         CourseRequirementPriority Priority, DateOnly StartDate, DateOnly EndDate, int DurationInPeriods,
-        int FrequencyPerWeek, int? RequiredCapacity, List<SoftSchedulingPreferenceDto>? SoftPreferences)
+        int FrequencyPerWeek, int? RequiredCapacity, List<SoftSchedulingPreferenceDto>? SoftPreferences, ClassTypeDto ClassType)
         : base(CourseId, StudentGroupId, SectionId, PreferredTeacherId, Priority, StartDate, EndDate,
-            DurationInPeriods, FrequencyPerWeek, RequiredCapacity, SoftPreferences)
+            DurationInPeriods, FrequencyPerWeek, RequiredCapacity, SoftPreferences, ClassType)
     {
+        this.TimetableId = TimetableId;
     }
 }
 
@@ -50,22 +52,33 @@ public record UpdateCourseRequirementRequestDto : CourseRequirementBaseDto
     public UpdateCourseRequirementRequestDto(
         int CourseId, int? StudentGroupId, int? SectionId, int? PreferredTeacherId,
         CourseRequirementPriority Priority, DateOnly StartDate, DateOnly EndDate, int DurationInPeriods,
-        int FrequencyPerWeek, int? RequiredCapacity, List<SoftSchedulingPreferenceDto>? SoftPreferences)
+        int FrequencyPerWeek, int? RequiredCapacity, List<SoftSchedulingPreferenceDto>? SoftPreferences, ClassTypeDto ClassType)
         : base(CourseId, StudentGroupId, SectionId, PreferredTeacherId, Priority, StartDate, EndDate,
-            DurationInPeriods, FrequencyPerWeek, RequiredCapacity, SoftPreferences)
+            DurationInPeriods, FrequencyPerWeek, RequiredCapacity, SoftPreferences, ClassType)
     {
     }
 }
 
+// --- Sub-DTOs ---
+
+public record SoftSchedulingPreferenceDto(
+    [Required] string PreferenceType,
+    [Required] string Value,
+    int? Weight
+);
+
+// --- Response DTOs ---
+
 public record CourseRequirementDto(
     int Id,
     int TimetableId,
-    CourseRequirementStatus Status, // Using Domain Enum
+    string Status,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    // Properties from CourseRequirementBaseDto
     int CourseId,
+    string? CourseName,
     int? StudentGroupId,
+    string? StudentGroupName,
     int? SectionId,
     int? PreferredTeacherId,
     CourseRequirementPriority Priority,
@@ -74,22 +87,20 @@ public record CourseRequirementDto(
     int DurationInPeriods,
     int FrequencyPerWeek,
     int? RequiredCapacity,
-    List<SoftSchedulingPreferenceDto>? SoftPreferences
+    ClassTypeDto ClassType,
+    List<SoftSchedulingPreferenceDto>? SoftPreferences,
+    EligibilitySummaryDto? EligibilitySummary
 );
 
-// --- DTOs for Available Slots ---
-public record StagedPlacementSlotDetailDto(
-    [Required(ErrorMessage = "Date is required")]
-    DateOnly Date,
-    [Required(ErrorMessage = "Time period ID is required")]
-    int TimePeriodId,
-    int? RoomId,
-    int? TeacherId
+public record EligibilitySummaryDto(
+    int Eligible,
+    int Total,
+    int Issues
 );
 
-public record AvailableSlotsRequestDto(
-    [Required(ErrorMessage = "TransientStagedItems array is required for slot validation")]
-    List<StagedPlacementSlotDetailDto>? TransientStagedItems
+public record PreflightCheckResultDto(
+    EligibilitySummaryDto Summary,
+    List<int> IneligibleStudentIds
 );
 
 public enum AvailableSlotStatus
