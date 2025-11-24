@@ -27,6 +27,7 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
     public DbSet<CourseRequirementEntity> CourseRequirements { get; set; }
     public DbSet<TimetableAssignmentEntity> TimetableAssignments { get; set; } 
     public DbSet<StagedPlacementEntity> StagedPlacements { get; set; }
+    public DbSet<StudentIssueEntity> StudentIssues { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -276,6 +277,11 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             // Navigation properties for Day/Period are usually read-only lookups in this context
             entity.HasOne(p => p.Day).WithMany().HasForeignKey(p => p.DayId);
             entity.HasOne(p => p.StartPeriod).WithMany().HasForeignKey(p => p.StartPeriodId);
+        });
+        
+        modelBuilder.Entity<StudentIssueEntity>(entity =>
+        {
+            entity.HasIndex(i => new { i.TimetableId, i.StudentId });
         });
     }
 }

@@ -57,6 +57,8 @@ builder.Services.AddScoped<RosterSyncService>();
 builder.Services.AddScoped<IStagedPlacementRepository, StagedPlacementRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<SchedulingService>();
+builder.Services.AddScoped<IStudentIssueRepository, StudentIssueRepository>();
+builder.Services.AddScoped<IStudentAuditService, StudentAuditService>();
 
 builder.Services.AddCors(options =>
 {
