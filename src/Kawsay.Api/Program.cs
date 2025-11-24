@@ -53,6 +53,7 @@ builder.Services.AddScoped<ICourseRequirementService, CourseRequirementService>(
 // builder.Services.AddScoped<ISchedulingEngineService, SchedulingEngineService>();
 builder.Services.AddScoped<ITimetableAssignmentRepository, TimetableAssignmentRepository>();
 builder.Services.AddScoped<ITimetableAssignmentService, TimetableAssignmentService>();
+builder.Services.AddScoped<RosterSyncService>();
 
 builder.Services.AddCors(options =>
 {
