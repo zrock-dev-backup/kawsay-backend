@@ -25,6 +25,7 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
     public DbSet<ClassTypeConfigurationEntity> ClassTypeConfigurations { get; set; }
     public DbSet<TeacherQualificationEntity> TeacherQualifications { get; set; }
     public DbSet<CourseRequirementEntity> CourseRequirements { get; set; }
+    public DbSet<TimetableAssignmentEntity> TimetableAssignments { get; set; } 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -236,6 +237,26 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
                 .WithOne(sp => sp.CourseRequirement)
                 .HasForeignKey(sp => sp.CourseRequirementId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+        
+        modelBuilder.Entity<TimetableAssignmentEntity>(entity =>
+        {
+            entity.HasKey(ta => ta.Id);
+            
+            entity.HasIndex(ta => new { ta.TimetableId, ta.TeacherId }); // Index for faster lookups
+
+            entity.HasOne(ta => ta.Timetable)
+                .WithMany()
+                .HasForeignKey(ta => ta.TimetableId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ta => ta.Teacher)
+                .WithMany()
+                .HasForeignKey(ta => ta.TeacherId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(ta => ta.WorkloadUnit)
+                .HasConversion<string>(); // Persist Enum as String
         });
         
         modelBuilder.Entity<SoftSchedulingPreferenceEntity>(entity =>
