@@ -54,6 +54,9 @@ builder.Services.AddScoped<ICourseRequirementService, CourseRequirementService>(
 builder.Services.AddScoped<ITimetableAssignmentRepository, TimetableAssignmentRepository>();
 builder.Services.AddScoped<ITimetableAssignmentService, TimetableAssignmentService>();
 builder.Services.AddScoped<RosterSyncService>();
+builder.Services.AddScoped<IStagedPlacementRepository, StagedPlacementRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<SchedulingService>();
 
 builder.Services.AddCors(options =>
 {

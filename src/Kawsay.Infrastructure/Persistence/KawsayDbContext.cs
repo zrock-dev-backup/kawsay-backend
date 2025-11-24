@@ -26,6 +26,7 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
     public DbSet<TeacherQualificationEntity> TeacherQualifications { get; set; }
     public DbSet<CourseRequirementEntity> CourseRequirements { get; set; }
     public DbSet<TimetableAssignmentEntity> TimetableAssignments { get; set; } 
+    public DbSet<StagedPlacementEntity> StagedPlacements { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -263,6 +264,18 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
         {
             // Basic configuration, FK is already set up by the collection on CourseRequirementEntity
             entity.HasIndex(sp => sp.CourseRequirementId);
+        });
+        
+        modelBuilder.Entity<StagedPlacementEntity>(entity =>
+        {
+            entity.HasOne(p => p.CourseRequirement)
+                .WithMany()
+                .HasForeignKey(p => p.CourseRequirementId)
+                .OnDelete(DeleteBehavior.Cascade);
+    
+            // Navigation properties for Day/Period are usually read-only lookups in this context
+            entity.HasOne(p => p.Day).WithMany().HasForeignKey(p => p.DayId);
+            entity.HasOne(p => p.StartPeriod).WithMany().HasForeignKey(p => p.StartPeriodId);
         });
     }
 }

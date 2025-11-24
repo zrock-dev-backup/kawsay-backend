@@ -132,3 +132,22 @@ public record AvailableSlotsResponseDto(
     [Required(ErrorMessage = "Slots array is required")]
     List<AvailableSlotDto> Slots
 );
+
+public record StagedPlacementDto(
+    int Id,
+    int CourseRequirementId,
+    string CourseName,
+    string CourseCode,
+    int DayId,
+    int StartPeriodId,
+    int Length
+);
+
+public record CreateStagedPlacementRequest(
+    int RequirementId,
+    int DayId,
+    int StartPeriodId
+);
+
+public record FinalizeScheduleRequest(int TimetableId);
+public record FinalizeScheduleResponse(string Message, int ClassesCreated);
