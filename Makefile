@@ -20,7 +20,7 @@ build-prod:
 
 run:
 	@echo "Running locally..."
-	./result/bin/Api
+	dotnet run --project src/Kawsay.Api/Api.csproj
 
 develop:
 	@echo "Entering development shell..."

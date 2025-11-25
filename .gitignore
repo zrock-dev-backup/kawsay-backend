@@ -212,3 +212,5 @@ files
 *.out
 *.mdf
 out/
+context/
+output-plantuml/
