@@ -4,6 +4,7 @@ using Api.Middleware;
 using Application.Interfaces.Persistence;
 using Application.Interfaces.Services;
 using Application.Services;
+using Infrastructure.External;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -60,6 +61,13 @@ builder.Services.AddScoped<SchedulingService>();
 builder.Services.AddScoped<IStudentIssueRepository, StudentIssueRepository>();
 builder.Services.AddScoped<IStudentAuditService, StudentAuditService>();
 
+builder.Services.AddHttpClient<IPredictionService, PredictionApiClient>(client =>
+{
+    var baseUrl = builder.Configuration["ExternalServices:PredictionApi"] ?? "http://localhost:8000";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -103,3 +111,4 @@ app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
