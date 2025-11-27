@@ -6,8 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
@@ -32,30 +38,40 @@
           enableParallelBuilding = true;
         };
 
-        mkKawsayPackage = { environment }:
-          pkgs.buildDotnetModule (commonBuildConfig // {
-            pname = "kawsay-backend-${environment}";
-            dotnetPublishFlags = commonPublishFlags ++ [
-              "--self-contained"
-              "--runtime" "linux-x64"
-              "-p:EnvironmentName=${environment}"
-            ];
+        mkKawsayPackage =
+          { environment }:
+          pkgs.buildDotnetModule (
+            commonBuildConfig
+            // {
+              pname = "kawsay-backend-${environment}";
+              dotnetPublishFlags = commonPublishFlags ++ [
+                "--self-contained"
+                "--runtime"
+                "linux-x64"
+                "-p:EnvironmentName=${environment}"
+              ];
 
-            makeWrapperArgs = [
-              "--set" "ASPNETCORE_ENVIRONMENT" "${environment}"
-              "--add-flags" "--contentRoot"
-              "--add-flags" "."
-            ];
+              makeWrapperArgs = [
+                "--set"
+                "ASPNETCORE_ENVIRONMENT"
+                "${environment}"
+                "--add-flags"
+                "--contentRoot"
+                "--add-flags"
+                "."
+              ];
 
-            meta = with pkgs.lib; {
-              description = "Kawsay backend API (${environment})";
-              license = licenses.mit;
-              platforms = platforms.linux;
-              maintainers = [ "zrock" ];
-            };
-          });
+              meta = with pkgs.lib; {
+                description = "Kawsay backend API (${environment})";
+                license = licenses.mit;
+                platforms = platforms.linux;
+                maintainers = [ "zrock" ];
+              };
+            }
+          );
 
-      in {
+      in
+      {
         packages = {
           development = mkKawsayPackage { environment = "Development"; };
           staging = mkKawsayPackage { environment = "Staging"; };
@@ -69,7 +85,9 @@
             config = {
               Env = [ "ASPNETCORE_URLS=http://+:5167" ];
               Cmd = [ "/bin/Api" ];
-              ExposedPorts = { "5167/tcp" = {}; };
+              ExposedPorts = {
+                "5167/tcp" = { };
+              };
             };
           };
 
@@ -109,12 +127,31 @@
               fi
 
               echo "Executing EF Core Migrations..."
-              dotnet ef database update \
+              if ! dotnet ef database update \
                 --project src/Kawsay.Infrastructure/Infrastructure.csproj \
                 --startup-project src/Kawsay.Api/Api.csproj \
-                -- --connection "$KAWSAY_CONNECTION_STRING"
+                -- --connection "$KAWSAY_CONNECTION_STRING"; then
 
-              echo "✅ Migrations applied successfully."
+                echo "⚠️  Migration failed. Creating new migration..."
+
+                # Generate migration name with timestamp
+                MIGRATION_NAME="AutoMigration_$(date +%Y%m%d_%H%M%S)"
+
+                echo "Creating migration: $MIGRATION_NAME"
+                dotnet ef migrations add "$MIGRATION_NAME" \
+                  --project src/Kawsay.Infrastructure/Infrastructure.csproj \
+                  --startup-project src/Kawsay.Api/Api.csproj
+
+                echo "Applying new migration..."
+                dotnet ef database update \
+                  --project src/Kawsay.Infrastructure/Infrastructure.csproj \
+                  --startup-project src/Kawsay.Api/Api.csproj \
+                  -- --connection "$KAWSAY_CONNECTION_STRING"
+
+                echo "✅ New migration created and applied successfully."
+              else
+                echo "✅ Migrations applied successfully."
+              fi
             '';
           };
         };
@@ -122,16 +159,14 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             dotnetCorePackages.sdk_8_0
-            dotnet-ef
           ];
 
           shellHook = ''
-              set -e
-              if [ -z "$KAWSAY_CONNECTION_STRING" ]; then
-                echo "Error: KAWSAY_CONNECTION_STRING environment variable is not set."
-                exit 1
-              fi
-              exec elvish
+            set -e
+            if [ -z "$KAWSAY_CONNECTION_STRING" ]; then
+              echo "Error: KAWSAY_CONNECTION_STRING environment variable is not set."
+              exit 1
+            fi
           '';
 
           DOTNET_CLI_TELEMETRY_OPTOUT = "1";
@@ -154,7 +189,7 @@
 
                 echo "Starting development server in new terminal..."
                 launch_terminal
-                '';
+              '';
             };
           };
 
