@@ -30,34 +30,39 @@ public record CourseRequirementBaseDto(
     ClassTypeDto ClassType
 );
 
-public record CreateCourseRequirementRequestDto : CourseRequirementBaseDto
-{
-    [Required]
-    public int TimetableId { get; init; }
+public record CreateCourseRequirementRequestDto(
+    // timetaableId is required to create, but what about when updating? it creates a middleware validation error.
+    int TimetableId,
+    int CourseId,
+    int? StudentGroupId,
+    int? SectionId,
+    int? PreferredTeacherId,
+    CourseRequirementPriority Priority,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    int DurationInPeriods,
+    int FrequencyPerWeek,
+    int? RequiredCapacity,
+    List<SoftSchedulingPreferenceDto>? SoftPreferences,
+    ClassTypeDto ClassType)
+    : CourseRequirementBaseDto(CourseId, StudentGroupId, SectionId, PreferredTeacherId, Priority, StartDate, EndDate,
+        DurationInPeriods, FrequencyPerWeek, RequiredCapacity, SoftPreferences, ClassType);
 
-    public CreateCourseRequirementRequestDto(
-        int TimetableId,
-        int CourseId, int? StudentGroupId, int? SectionId, int? PreferredTeacherId,
-        CourseRequirementPriority Priority, DateOnly StartDate, DateOnly EndDate, int DurationInPeriods,
-        int FrequencyPerWeek, int? RequiredCapacity, List<SoftSchedulingPreferenceDto>? SoftPreferences, ClassTypeDto ClassType)
-        : base(CourseId, StudentGroupId, SectionId, PreferredTeacherId, Priority, StartDate, EndDate,
-            DurationInPeriods, FrequencyPerWeek, RequiredCapacity, SoftPreferences, ClassType)
-    {
-        this.TimetableId = TimetableId;
-    }
-}
-
-public record UpdateCourseRequirementRequestDto : CourseRequirementBaseDto
-{
-    public UpdateCourseRequirementRequestDto(
-        int CourseId, int? StudentGroupId, int? SectionId, int? PreferredTeacherId,
-        CourseRequirementPriority Priority, DateOnly StartDate, DateOnly EndDate, int DurationInPeriods,
-        int FrequencyPerWeek, int? RequiredCapacity, List<SoftSchedulingPreferenceDto>? SoftPreferences, ClassTypeDto ClassType)
-        : base(CourseId, StudentGroupId, SectionId, PreferredTeacherId, Priority, StartDate, EndDate,
-            DurationInPeriods, FrequencyPerWeek, RequiredCapacity, SoftPreferences, ClassType)
-    {
-    }
-}
+public record UpdateCourseRequirementRequestDto(
+    int CourseId,
+    int? StudentGroupId,
+    int? SectionId,
+    int? PreferredTeacherId,
+    CourseRequirementPriority Priority,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    int DurationInPeriods,
+    int FrequencyPerWeek,
+    int? RequiredCapacity,
+    List<SoftSchedulingPreferenceDto>? SoftPreferences,
+    ClassTypeDto ClassType)
+    : CourseRequirementBaseDto(CourseId, StudentGroupId, SectionId, PreferredTeacherId, Priority, StartDate, EndDate,
+        DurationInPeriods, FrequencyPerWeek, RequiredCapacity, SoftPreferences, ClassType);
 
 // --- Sub-DTOs ---
 
