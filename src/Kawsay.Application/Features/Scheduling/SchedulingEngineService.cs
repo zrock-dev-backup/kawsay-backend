@@ -4,6 +4,8 @@ using Domain.Entities;
 
 namespace Application.Features.Scheduling
 {
+    // Deprecated, use GRPc implementation
+    // Marked for deletion. Along overall implementation
     public class SchedulingEngineService(
         ICourseRequirementRepository requirementRepo,
         IAvailabilityReadModelRepository availabilityRepo,

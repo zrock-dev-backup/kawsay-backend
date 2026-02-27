@@ -1,0 +1,26 @@
+syntax = "proto3";
+//import "problem_definition.proto"; // FIX: Relative import
+import "Protos/problem_definition.proto";
+package timetabling.v1;
+option csharp_namespace = "Infrastructure.Protos";
+service TimetablingService {
+rpc Solve (ProblemDefinition) returns (Solution) {}
+}
+message Solution {
+string job_id = 1;
+SolverStatus status = 2;
+repeated ScheduledActivity scheduled_activities = 3;
+string message = 4;
+int64 quality_score = 5;
+}
+message ScheduledActivity {
+string activity_id = 1;
+TimeSlot start_time = 2;
+}
+enum SolverStatus {
+UNKNOWN = 0;
+OPTIMAL = 1;
+FEASIBLE = 2;
+INFEASIBLE = 3;
+MODEL_INVALID = 4;
+}

@@ -1,12 +1,14 @@
 using System.Text.Json.Serialization;
 using Api.Converters; // Add namespace
 using Api.Middleware;
+using Application.Interfaces.Infrastructure;
 using Application.Interfaces.Persistence;
 using Application.Interfaces.Services;
 using Application.Services;
 using Infrastructure.External;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
+using Infrastructure.Protos;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -61,6 +63,10 @@ builder.Services.AddScoped<SchedulingService>();
 builder.Services.AddScoped<IStudentIssueRepository, StudentIssueRepository>();
 builder.Services.AddScoped<IStudentAuditService, StudentAuditService>();
 
+// gRPC implementation
+builder.Services.AddScoped<ISolverClient, SolverGrpcClient>();
+builder.Services.AddScoped<TimetableGenerationService>();
+
 builder.Services.AddHttpClient<IPredictionService, PredictionApiClient>(client =>
 {
     var baseUrl = builder.Configuration["ExternalServices:PredictionApi"] ?? "http://localhost:8000";
@@ -90,6 +96,11 @@ builder.Services.AddControllers(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     options.JsonSerializerOptions.Converters.Add(new DateOnlyJsonConverter());
+});
+
+builder.Services.AddGrpcClient<TimetablingService.TimetablingServiceClient>(options =>
+{
+    options.Address = new Uri(builder.Configuration["ExternalServices:SolverApi"]);
 });
 
 

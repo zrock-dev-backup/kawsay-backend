@@ -1,0 +1,83 @@
+syntax = "proto3";
+package timetabling.v1;
+option csharp_namespace = "Infrastructure.Protos";
+message ProblemDefinition {
+string job_id = 1;
+SolverConfig config = 2;
+TimeGrid time_grid = 3;
+repeated Teacher teachers = 4;
+repeated StudentGroup student_groups = 5;
+repeated Activity activities = 6;
+repeated WorkloadConstraint workload_constraints = 7;
+repeated AdvancedWorkloadConstraint advanced_workload_constraints = 8;
+repeated SystemBreak system_breaks = 9;
+repeated TimePreference time_preferences = 10;
+int32 student_gap_penalty_per_day = 11;
+repeated ActivityOrdering activity_orderings = 12;
+repeated ConsecutiveActivities consecutive_activities = 13;
+repeated MinDaysBetweenActivities min_days_between_activities = 14;
+}
+message SolverConfig {
+float max_solve_time_seconds = 1;
+}
+message TimeGrid {
+int32 days = 1;
+int32 slots_per_day = 2;
+}
+message Teacher {
+string id = 1;
+string name = 2;
+repeated TimeSlot unavailable_slots = 3;
+}
+message StudentGroup {
+string id = 1;
+string name = 2;
+}
+message Activity {
+string id = 1;
+string name = 2;
+string teacher_id = 3;
+repeated string student_group_ids = 4;
+int32 duration_in_slots = 5;
+bool is_locked = 6;
+TimeSlot locked_start_time = 7;
+string time_preference_id = 8;
+}
+message TimeSlot {
+int32 day_index = 1;
+int32 slot_index = 2;
+}
+message WorkloadConstraint {
+string teacher_id = 1;
+int32 max_gaps_per_day = 2;
+int32 penalty_per_gap = 3;
+int32 max_hours_per_day = 4;
+}
+message AdvancedWorkloadConstraint {
+string teacher_id = 1;
+int32 max_hours_per_week = 2;
+int32 max_days_per_week = 3;
+}
+message SystemBreak {
+string id = 1;
+int32 start_day = 2;
+int32 end_day = 3;
+}
+message TimePreference {
+string id = 1;
+repeated TimeSlot preferred_slots = 2;
+int32 penalty_per_violation = 3;
+}
+message ActivityOrdering {
+string before_activity_id = 1;
+string after_activity_id = 2;
+}
+message ConsecutiveActivities {
+string first_activity_id = 1;
+string second_activity_id = 2;
+}
+message MinDaysBetweenActivities {
+string first_activity_id = 1;
+string second_activity_id = 2;
+int32 minimum_days = 3;
+}

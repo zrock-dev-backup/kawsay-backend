@@ -2,6 +2,8 @@ using Application.Features.Scheduling.Models;
 
 namespace Application.Features.Scheduling.Utils;
 
+// Deprecated, use GRPc implementation
+// Marked for deletion. Along overall implementation
 public static class SchedulingHeuristics
 {
     public static bool IsSlotConflictFree(int dayIndex, int startPeriodIndex, int length,
