@@ -8,31 +8,6 @@ namespace Api.Controllers;
 [Route("kawsay/module-processing")]
 public class ModuleProcessingController(EndofModuleService endofModuleService) : ControllerBase
 {
-    [HttpPost("{timetableId:int}/ingest-grades")]
-    public async Task<IActionResult> IngestGrades(int timetableId, [FromBody] List<GradeIngestionDto> gradeData)
-    {
-        if (!ModelState.IsValid || !gradeData.Any())
-        {
-            return BadRequest(new { message = "Invalid or empty grade data provided." });
-        }
-
-        try
-        {
-            await endofModuleService.IngestGradesAsync(timetableId, gradeData);
-            return Ok(new
-                { message = $"Successfully ingested {gradeData.Count} grade records for timetable {timetableId}." });
-        }
-        catch (ArgumentException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            return StatusCode(500, new { message = "An internal error occurred while ingesting grades." });
-        }
-    }
-
     [HttpGet("{timetableId:int}/cohorts")]
     public async Task<ActionResult<StudentCohortDto>> GetCohorts(int timetableId)
     {

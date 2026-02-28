@@ -67,9 +67,24 @@ builder.Services.AddScoped<IStudentAuditService, StudentAuditService>();
 builder.Services.AddScoped<ISolverClient, SolverGrpcClient>();
 builder.Services.AddScoped<TimetableGenerationService>();
 
+builder.Services.AddTransient<AcademicAuthHandler>(_ =>
+    new AcademicAuthHandler(
+        builder.Configuration["AcademicApi:ServiceAccountUser"] ?? "admin",
+        builder.Configuration["AcademicApi:ServiceAccountRole"] ?? "admin"));
+
+builder.Services.AddHttpClient<IAcademicApiClient, AcademicApiClient>(client =>
+    {
+        var baseUrl = builder.Configuration["ExternalServices:mockSIS"]
+                      ?? throw new InvalidOperationException("ExternalServices:BaseUrl is missing.");
+        client.BaseAddress = new Uri(baseUrl);
+        client.Timeout = TimeSpan.FromSeconds(30);
+    })
+    .AddHttpMessageHandler<AcademicAuthHandler>();
+
 builder.Services.AddHttpClient<IPredictionService, PredictionApiClient>(client =>
 {
-    var baseUrl = builder.Configuration["ExternalServices:PredictionApi"] ?? "http://localhost:8000";
+    var baseUrl = builder.Configuration["ExternalServices:PredictionApi"]
+                  ?? throw new InvalidOperationException("ExternalServices:BaseUrl is missing.");
     client.BaseAddress = new Uri(baseUrl);
     client.Timeout = TimeSpan.FromSeconds(10);
 });
@@ -100,7 +115,7 @@ builder.Services.AddControllers(options =>
 
 builder.Services.AddGrpcClient<TimetablingService.TimetablingServiceClient>(options =>
 {
-    options.Address = new Uri(builder.Configuration["ExternalServices:SolverApi"]);
+    options.Address = new Uri(builder.Configuration["ExternalServices:SolverApi"] ?? throw new InvalidOperationException());
 });
 
 

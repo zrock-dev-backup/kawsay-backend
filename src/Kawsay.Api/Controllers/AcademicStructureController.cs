@@ -13,20 +13,6 @@ public class AcademicStructureController(
 {
     // --- COHORT ENDPOINTS ---
 
-    [HttpPost("cohorts")]
-    public async Task<ActionResult<CohortDetailDto>> CreateCohort([FromBody] CreateCohortRequest request)
-    {
-        try
-        {
-            var cohort = await structureService.CreateCohortAsync(request);
-            return CreatedAtAction(nameof(GetCohort), new { cohortId = cohort!.Id }, cohort);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
     [HttpGet("cohorts/{cohortId:int}")]
     public async Task<ActionResult<CohortDetailDto>> GetCohort(int cohortId)
     {
@@ -34,63 +20,19 @@ public class AcademicStructureController(
         return cohort == null ? NotFound(new { message = $"Cohort with ID {cohortId} not found." }) : Ok(cohort);
     }
 
-    // --- STUDENT GROUP ENDPOINTS ---
-
-    [HttpPost("groups")]
-    public async Task<ActionResult<StudentGroupDetailDto>> CreateStudentGroup(
-        [FromBody] CreateStudentGroupRequest request)
-    {
-        try
-        {
-            var group = await structureService.CreateStudentGroupAsync(request);
-            return Ok(group);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    // --- SECTION ENDPOINTS ---
-
-    [HttpPost("sections")]
-    public async Task<ActionResult<SectionDetailDto>> CreateSection([FromBody] CreateSectionRequest request)
-    {
-        try
-        {
-            var section = await structureService.CreateSectionAsync(request);
-            return Ok(section);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    // --- ASSIGNMENT ENDPOINT ---
-
-    [HttpPost("sections/students")]
-    public async Task<IActionResult> AssignStudentToSection([FromBody] AssignStudentToSectionRequest request)
-    {
-        try
-        {
-            await structureService.AssignStudentToSectionAsync(request);
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
     // --- SYNC ENDPOINTS ---
     // TODO: should move under timetables
     [HttpPost("~/kawsay/timetables/{timetableId:int}/academic-structure/sync")]
     [ProducesResponseType(typeof(AcademicStructureSyncResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> SyncRoster(int timetableId)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SyncRoster(int timetableId, [FromQuery] string externalCohortId)
     {
-        var result = await rosterSyncService.SyncRosterAsync(timetableId);
+        if (string.IsNullOrWhiteSpace(externalCohortId))
+            return BadRequest(new { message = "The 'externalCohortId' query parameter is required." });
+
+        var result = await rosterSyncService.SyncRosterAsync(timetableId, externalCohortId);
+        
         return result.IsSuccess ? Ok(result.Value) : NotFound(new { message = result.Error.Message });
     }
 

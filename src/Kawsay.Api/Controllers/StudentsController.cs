@@ -40,34 +40,6 @@ public class StudentsController(
         return Ok(dtos);
     }
 
-    [HttpPost]
-    public async Task<ActionResult<StudentDto>> CreateStudent([FromBody] StudentDto studentDto)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-
-        var studentEntity = new StudentEntity
-        {
-            Name = studentDto.Name,
-            Standing = Enum.TryParse<AcademicStanding>(studentDto.Standing, true, out var standing)
-                ? standing
-                : AcademicStanding.GoodStanding
-        };
-
-        var createdStudent = await studentRepository.AddAsync(studentEntity);
-
-        var responseDto = new StudentDto
-        {
-            Id = createdStudent.Id,
-            Name = createdStudent.Name,
-            Standing = createdStudent.Standing.ToString()
-        };
-
-        return Created($"/kawsay/Students/{responseDto.Id}", responseDto);
-    }
-
     [HttpGet("{id:int}")]
     public async Task<ActionResult<StudentDto>> GetStudent(int id)
     {

@@ -1,33 +1,56 @@
 using Application.DTOs;
+using Application.Interfaces.Infrastructure;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
 using Domain.Enums;
+
+// ... other usings
 
 namespace Application.Services;
 
 public class EndofModuleService(
     IStudentModuleGradeRepository gradeRepository,
     IStudentRepository studentRepository,
-    ITimetableRepository timetableRepository)
+    ITimetableRepository timetableRepository,
+    IAcademicApiClient academicApiClient) // <-- INJECTED
 {
-    private const decimal PassingThreshold = 70.0m; // Example passing grade
+    private const decimal PassingThreshold = 70.0m;
 
-    public async Task IngestGradesAsync(int timetableId, IEnumerable<GradeIngestionDto> gradeData)
+    // This method replaces the old manual IngestGradesAsync
+    public async Task SyncGradesFromSisAsync(int timetableId, List<int> localStudentIds)
     {
-        var timetable = await timetableRepository.GetByIdAsync(timetableId);
-        if (timetable == null)
-        {
-            throw new ArgumentException($"Timetable with ID {timetableId} not found.");
-        }
+        var timetable = await timetableRepository.GetByIdAsync(timetableId) 
+            ?? throw new ArgumentException($"Timetable {timetableId} not found.");
 
-        var newGrades = gradeData.Select(g => new StudentModuleGrade
+        var students = await studentRepository.GetByIdsAsync(localStudentIds);
+        var newGrades = new List<StudentModuleGrade>();
+
+        foreach (var student in students)
         {
-            StudentId = g.StudentId,
-            CourseId = g.CourseId,
-            TimetableId = timetableId,
-            GradeValue = g.GradeValue,
-            IsPassing = g.GradeValue >= PassingThreshold
-        }).ToList();
+            // IMPORTANT: Requires StudentEntity to have an ExternalId to query the SIS
+            var sisId = "STU-10485"; // STUB: student.ExternalId; 
+
+            var sisProfile = await academicApiClient.GetStudentProfileAsync(sisId);
+            
+            if (sisProfile?.Grades != null)
+            {
+                foreach (var externalGrade in sisProfile.Grades)
+                {
+                    // Map SIS grade to local read-model
+                    if (decimal.TryParse(externalGrade.GradeValue, out var numericGrade))
+                    {
+                        newGrades.Add(new StudentModuleGrade
+                        {
+                            StudentId = student.Id,
+                            CourseId = 1, // STUB: Resolve from externalGrade.CourseCode
+                            TimetableId = timetableId,
+                            GradeValue = numericGrade,
+                            IsPassing = numericGrade >= PassingThreshold
+                        });
+                    }
+                }
+            }
+        }
 
         await gradeRepository.AddRangeAsync(newGrades);
     }

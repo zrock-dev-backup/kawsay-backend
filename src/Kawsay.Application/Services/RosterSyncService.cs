@@ -1,17 +1,20 @@
 using Application.Core;
 using Application.DTOs;
+using Application.Interfaces.Infrastructure;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
+using Domain.Enums;
 
 namespace Application.Services;
 
-// TODO: should use external roster service
 public class RosterSyncService(
     IAcademicStructureRepository structureRepository,
     ITimetableRepository timetableRepository,
-    IStudentRepository studentRepository)
+    IStudentRepository studentRepository,
+    IAcademicApiClient academicApiClient, // <-- The SIS Telemetry Link
+    IUnitOfWork unitOfWork)               // <-- For transactional safety
 {
-    public async Task<Result<AcademicStructureSyncResultDto>> SyncRosterAsync(int timetableId)
+    public async Task<Result<AcademicStructureSyncResultDto>> SyncRosterAsync(int timetableId, string externalCohortId)
     {
         var timetable = await timetableRepository.GetByIdAsync(timetableId);
         if (timetable == null)
@@ -21,114 +24,129 @@ public class RosterSyncService(
         var stats = new SyncStats();
         var warnings = new List<string>();
 
-        // 1. Fetch Source Data (Simulated "Mock SIS")
-        var sourceData = GetMockSourceData(timetableId);
-        if (sourceData == null || sourceData.Count == 0)
+        // 1. Fetch Source Data from SIS
+        var sisCohort = await academicApiClient.GetCohortAsync(externalCohortId);
+        if (sisCohort == null)
         {
-             return Result<AcademicStructureSyncResultDto>.Success(new AcademicStructureSyncResultDto(
-                "Mock-SIS", startedAt, DateTime.UtcNow, 0, 0, 0, 0, "No source data found for this timetable.", null));
+            return Result<AcademicStructureSyncResultDto>.Failure(
+                Error.NotFound("SIS.NotFound", $"Cohort '{externalCohortId}' could not be found in the SIS."));
         }
 
-        // 2. Fetch Existing Data to prevent duplicates
-        var existingCohorts = await structureRepository.GetCohortsByTimetableAsync(timetableId);
-
-        // 3. Sync Logic
-        foreach (var cohortSeed in sourceData)
+        await unitOfWork.BeginTransactionAsync();
+        try
         {
-            var cohort = existingCohorts.FirstOrDefault(c => c.Name == cohortSeed.Name);
+            // 2. Fetch Local State for Upsert Matching
+            var existingCohorts = await structureRepository.GetCohortsByTimetableAsync(timetableId);
+            var allLocalStudents = (await studentRepository.GetAllAsync()).ToList();
+
+            // --- UPSERT COHORT ---
+            // Note: Matching by Name as MVP. Best practice is adding an ExternalId string column to the entities.
+            var cohort = existingCohorts.FirstOrDefault(c => c.Name == sisCohort.CohortName);
             if (cohort == null)
             {
-                cohort = new CohortEntity { Name = cohortSeed.Name, TimetableId = timetableId };
+                cohort = new CohortEntity { Name = sisCohort.CohortName, TimetableId = timetableId };
                 await structureRepository.AddCohortAsync(cohort);
                 stats.CohortsCreated++;
             }
 
-            foreach (var groupSeed in cohortSeed.Groups)
+            foreach (var sisGroup in sisCohort.Groups)
             {
-                // Re-fetch or navigate to ensure we have latest ID if just created
-                // Note: For simplicity in EF, we rely on the object reference 'cohort' which tracks the new ID after AddAsync/Save
-                
-                var group = cohort.StudentGroups.FirstOrDefault(g => g.Name == groupSeed.Name);
+                // --- UPSERT GROUP ---
+                var group = cohort.StudentGroups.FirstOrDefault(g => g.Name == sisGroup.GroupName);
                 if (group == null)
                 {
-                    group = new StudentGroupEntity { Name = groupSeed.Name, CohortId = cohort.Id };
-                    // We attach it to the parent for navigation consistency, though AddAsync handles persistence
-                    cohort.StudentGroups.Add(group); 
+                    group = new StudentGroupEntity { Name = sisGroup.GroupName, CohortId = cohort.Id };
+                    cohort.StudentGroups.Add(group);
                     await structureRepository.AddStudentGroupAsync(group);
                     stats.GroupsCreated++;
                 }
 
-                foreach (var sectionSeed in groupSeed.Sections)
+                foreach (var sisLab in sisGroup.Labs)
                 {
-                    var section = group.Sections.FirstOrDefault(s => s.Name == sectionSeed.Name);
+                    // --- UPSERT SECTION (SIS calls them Labs) ---
+                    var section = group.Sections.FirstOrDefault(s => s.Name == sisLab.LabName);
                     if (section == null)
                     {
-                        section = new SectionEntity { Name = sectionSeed.Name, StudentGroupId = group.Id };
+                        section = new SectionEntity { Name = sisLab.LabName, StudentGroupId = group.Id };
                         group.Sections.Add(section);
                         await structureRepository.AddSectionAsync(section);
                         stats.SectionsCreated++;
                     }
 
-                    // Sync Students into Section
-                    var students = await studentRepository.GetByIdsAsync(sectionSeed.StudentIds);
-                    foreach (var student in students)
+                    // --- UPSERT STUDENTS & ASSIGN TO SECTION ---
+                    var studentsToUpdate = new List<StudentEntity>();
+
+                    foreach (var sisStudent in sisLab.Students)
                     {
-                        if (student.SectionId != section.Id)
+                        var fullName = $"{sisStudent.FirstName} {sisStudent.LastName}".Trim();
+                        
+                        // Look for student by name (Again, ExternalId like sisStudent.StudentId is much safer long term)
+                        var localStudent = allLocalStudents.FirstOrDefault(s => s.Name == fullName);
+
+                        if (localStudent == null)
                         {
-                            // Only count if we are actually moving/assigning them
-                            student.SectionId = section.Id; 
+                            // Map SIS Status to Domain Enum
+                            var standing = sisStudent.Status.Equals("Active", StringComparison.OrdinalIgnoreCase)
+                                ? AcademicStanding.GoodStanding
+                                : AcademicStanding.Withdrawn;
+
+                            localStudent = new StudentEntity
+                            {
+                                Name = fullName,
+                                Standing = standing,
+                                SectionId = section.Id
+                            };
+                            
+                            await studentRepository.AddAsync(localStudent);
+                            allLocalStudents.Add(localStudent); // Track locally to avoid duplicates in same run
+                            stats.ProcessedStudents++;
+                        }
+                        else if (localStudent.SectionId != section.Id)
+                        {
+                            // Student exists but is moving to a new section
+                            localStudent.SectionId = section.Id;
+                            studentsToUpdate.Add(localStudent);
                             stats.ProcessedStudents++;
                         }
                     }
-                    await studentRepository.UpdateRangeAsync(students);
+
+                    if (studentsToUpdate.Count > 0)
+                    {
+                        await studentRepository.UpdateRangeAsync(studentsToUpdate);
+                    }
                 }
             }
+
+            await unitOfWork.CommitTransactionAsync();
+
+            var message = stats.CohortsCreated == 0 && stats.ProcessedStudents == 0
+                ? $"Sync complete. {sisCohort.CohortName} is already up to date."
+                : $"Synced {sisCohort.CohortName}. Created {stats.CohortsCreated} cohorts, {stats.GroupsCreated} groups, and processed {stats.ProcessedStudents} students.";
+
+            return Result<AcademicStructureSyncResultDto>.Success(new AcademicStructureSyncResultDto(
+                "SIS API",
+                startedAt,
+                DateTime.UtcNow,
+                stats.ProcessedStudents,
+                stats.CohortsCreated,
+                stats.GroupsCreated,
+                stats.SectionsCreated,
+                message,
+                warnings.Count > 0 ? warnings : null
+            ));
         }
-
-        var message = stats.CohortsCreated == 0 && stats.ProcessedStudents == 0
-            ? "Roster sync completed. No changes detected."
-            : $"Roster sync completed. Created {stats.CohortsCreated} cohorts, {stats.GroupsCreated} groups, and assigned {stats.ProcessedStudents} students.";
-
-        return Result<AcademicStructureSyncResultDto>.Success(new AcademicStructureSyncResultDto(
-            "Mock-SIS",
-            startedAt,
-            DateTime.UtcNow,
-            stats.ProcessedStudents,
-            stats.CohortsCreated,
-            stats.GroupsCreated,
-            stats.SectionsCreated,
-            message,
-            warnings.Count > 0 ? warnings : null
-        ));
+        catch (Exception ex)
+        {
+            await unitOfWork.RollbackTransactionAsync();
+            return Result<AcademicStructureSyncResultDto>.Failure(Error.Failure("Sync.Failed", $"Database operation failed: {ex.Message}"));
+        }
     }
 
-    // --- Internal Helper Classes ---
-    private class SyncStats { public int CohortsCreated; public int GroupsCreated; public int SectionsCreated; public int ProcessedStudents; }
-    private record MockSection(string Name, List<int> StudentIds);
-    private record MockGroup(string Name, List<MockSection> Sections);
-    private record MockCohort(string Name, List<MockGroup> Groups);
-
-    // --- Data Seeder (Ported from Frontend Mocks) ---
-    private List<MockCohort> GetMockSourceData(int timetableId)
-    {
-        if (timetableId == 1) // Fall 2025
-        {
-            return new List<MockCohort>
-            {
-                new("Fall 2025 Intake", new List<MockGroup>
-                {
-                    new("Fall 2025 - Group A", new List<MockSection>
-                    {
-                        new("Lab Section A1", [1, 2]), // IDs from Seed Data
-                        new("Lab Section A2", [3])
-                    }),
-                    new("Fall 2025 - Group C", new List<MockSection>
-                    {
-                        new("Studio Section C1", [4])
-                    })
-                })
-            };
-        }
-        return new List<MockCohort>();
+    private class SyncStats 
+    { 
+        public int CohortsCreated; 
+        public int GroupsCreated; 
+        public int SectionsCreated; 
+        public int ProcessedStudents; 
     }
 }

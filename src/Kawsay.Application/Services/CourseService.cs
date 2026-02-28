@@ -33,23 +33,6 @@ public class CourseService(
         });
     }
 
-    public async Task<CourseDto> CreateCourseAsync(CourseDto createCourseRequestDto)
-    {
-        var courseEntity = new CourseEntity
-        {
-            Name = createCourseRequestDto.Name,
-            Code = createCourseRequestDto.Code
-        };
-
-        var createdEntity = await courseRepository.AddAsync(courseEntity);
-        return new CourseDto()
-        {
-            Id = createdEntity.Id,
-            Name = createdEntity.Name,
-            Code = createdEntity.Code
-        };
-    }
-
     public async Task<IEnumerable<TeacherDto>> GetQualifiedTeachersForCourseAsync(int courseId)
     {
         var teachers = await qualificationRepository.GetQualifiedTeachersForCourseAsync(courseId);

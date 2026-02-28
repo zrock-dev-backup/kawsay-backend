@@ -23,19 +23,6 @@ public class CoursesController(CourseService service) : ControllerBase
         return Ok(course);
     }
 
-    [HttpPost]
-    public async Task<ActionResult<CourseDto>> CreateCourse([FromBody] CourseDto createCourseRequest)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-        var createdCourseDto = await service.CreateCourseAsync(createCourseRequest);
-        return CreatedAtAction(nameof(GetCourse),
-            new
-            {
-                id = createdCourseDto.Id
-            },
-            createdCourseDto);
-    }
-
     [HttpGet("{courseId:int}/qualified-teachers")]
     public async Task<ActionResult<IEnumerable<TeacherDto>>> GetQualifiedTeachers(int courseId)
     {
