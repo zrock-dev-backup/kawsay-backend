@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Api.Converters; // Add namespace
+using Api.Converters;
 using Api.Middleware;
 using Application.Interfaces.Infrastructure;
 using Application.Interfaces.Persistence;

@@ -2,6 +2,7 @@ using Api.Data;
 using Application.DTOs;
 using Application.Models;
 using Application.Services;
+using Application.Core;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -10,7 +11,8 @@ namespace Api.Controllers;
 [Route("kawsay/timetables")]
 public class TimetableController(
     TimetableService service,
-    AcademicStructureService academicStructureService) : ControllerBase
+    AcademicStructureService academicStructureService,
+    TimetableGenerationService generationService) : ControllerBase // <-- Injected Generation Service
 {
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<TimetableStructure>), StatusCodes.Status200OK)]
@@ -21,8 +23,7 @@ public class TimetableController(
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(TimetableStructure), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(TimetableStructure), StatusCodes.Status200OK)]
     public async Task<ActionResult<TimetableStructure>> CreateTimetable([FromBody] CreateTimetableRequest request)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -68,34 +69,27 @@ public class TimetableController(
         return Ok(MapToDto(timetable));
     }
 
-    [HttpGet("master")]
-    [ProducesResponseType(typeof(TimetableStructure), StatusCodes.Status200OK)]
+    /// <summary>
+    /// THE IGNITION SWITCH: Calls the solver, generates the timetable, and saves it to StagedPlacements.
+    /// </summary>
+    [HttpPost("{id:int}/generate")]
+    [ProducesResponseType(typeof(GeneratedTimetableDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TimetableStructure>> GetMasterTimetable()
+    public async Task<ActionResult<GeneratedTimetableDto>> GenerateTimetable(int id, CancellationToken cancellationToken)
     {
-        var master = await service.GetMasterTimetableAsync();
-        return master == null
-            ? NotFound(new { message = "No master timetable is currently configured." })
-            : Ok(MapToDto(master));
-    }
+        // Fire the starter motor
+        var result = await generationService.GenerateTimetableAsync(id, cancellationToken);
+        
+        if (result.IsFailure)
+        {
+            return result.Error.Type == ErrorType.NotFound 
+                ? NotFound(new { error = result.Error.Code, message = result.Error.Message }) 
+                : BadRequest(new { error = result.Error.Code, message = result.Error.Message });
+        }
 
-    [HttpPost("{id:int}/publish")]
-    [ProducesResponseType(typeof(TimetableStructure), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TimetableStructure>> PublishTimetable(int id)
-    {
-        var published = await service.PublishTimetableAsync(id);
-        return published == null
-            ? NotFound(new { message = $"Timetable with ID {id} not found." })
-            : Ok(MapToDto(published));
-    }
-
-    [HttpGet("{timetableId:int}/cohorts")]
-    [ProducesResponseType(typeof(IEnumerable<CohortDetailDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<CohortDetailDto>>> GetCohortsForTimetable(int timetableId)
-    {
-        var cohorts = await academicStructureService.GetCohortsByTimetableAsync(timetableId);
-        return Ok(cohorts);
+        // Timetable generated and staged in DB successfully.
+        return Ok(result.Value);
     }
 
     private static TimetableStructure MapToDto(Timetable timetable)

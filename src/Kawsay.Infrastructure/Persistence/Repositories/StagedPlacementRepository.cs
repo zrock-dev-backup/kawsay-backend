@@ -1,4 +1,3 @@
-using Application.Features.Scheduling.Models;
 using Application.Interfaces.Persistence;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -14,26 +13,6 @@ public class StagedPlacementRepository(KawsayDbContext context) : IStagedPlaceme
             .ThenInclude(cr => cr.Course)
             .Where(sp => sp.CourseRequirement.TimetableId == timetableId)
             .ToListAsync();
-    }
-
-    public async Task<List<StagedPlacement>> GetStagedPlacementsForTimetableAsync(int timetableId)
-    {
-        var entities = await context.StagedPlacements
-            .Include(sp => sp.CourseRequirement)
-            .Where(sp => sp.CourseRequirement.TimetableId == timetableId)
-            .ToListAsync();
-
-        // Map Entity to Domain/Calculation Model
-        return entities.Select(e => new StagedPlacement(
-            e.CourseRequirementId,
-            e.DayId,
-            e.StartPeriodId,
-            e.Length,
-            // Combine PreferredTeacher and Group into generic "Resources" list for conflict checking
-            new List<int> { e.CourseRequirement.PreferredTeacherId ?? 0, e.CourseRequirement.StudentGroupId ?? 0 }
-                .Where(id => id != 0)
-                .ToList()
-        )).ToList();
     }
 
     public async Task<StagedPlacementEntity?> GetByIdAsync(int id)

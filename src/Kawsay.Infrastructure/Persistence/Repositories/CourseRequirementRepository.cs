@@ -15,11 +15,13 @@ public class CourseRequirementRepository(KawsayDbContext context) : ICourseRequi
     public async Task<CourseRequirementEntity?> GetByIdAsync(int requirementId)
     {
         return await context.CourseRequirements
+            .Include(cr => cr.Course) // Prevent NullReferenceException on Course
+            .Include(cr => cr.PreferredTeacher) // Prevent NullReferenceException on Teacher
             .Include(cr => cr.SoftPreferences)
             .Include(cr => cr.Timetable)
-                .ThenInclude(t => t.Days)
+            .ThenInclude(t => t.Days)
             .Include(cr => cr.Timetable)
-                .ThenInclude(t => t.Periods)
+            .ThenInclude(t => t.Periods)
             .FirstOrDefaultAsync(cr => cr.Id == requirementId);
     }
 
@@ -27,6 +29,8 @@ public class CourseRequirementRepository(KawsayDbContext context) : ICourseRequi
     {
         return await context.CourseRequirements
             .Where(cr => cr.TimetableId == timetableId)
+            .Include(cr => cr.Course) // Vital for the gRPC Solver Payload mapping
+            .Include(cr => cr.PreferredTeacher) // Vital for Teacher constraints
             .Include(cr => cr.SoftPreferences)
             .ToListAsync();
     }

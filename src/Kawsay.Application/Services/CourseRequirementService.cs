@@ -31,6 +31,7 @@ public class CourseRequirementService(
         {
             TimetableId = request.TimetableId,
             CourseId = request.CourseId,
+            Course = courseRepository.GetByIdAsync(request.CourseId).Result!,
             StudentGroupId = request.StudentGroupId,
             SectionId = request.SectionId,
             PreferredTeacherId = request.PreferredTeacherId,
