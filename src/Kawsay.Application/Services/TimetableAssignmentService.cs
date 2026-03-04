@@ -73,7 +73,6 @@ public class TimetableAssignmentService(
             entity.Id,
             entity.TimetableId,
             entity.TeacherId,
-            entity.Teacher?.Name ?? "Unknown",
             entity.StartWeek,
             entity.EndWeek,
             entity.MaximumWorkload,

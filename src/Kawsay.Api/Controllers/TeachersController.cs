@@ -21,28 +21,4 @@ public class TeachersController(TeacherService service) : ControllerBase
         if (teacher == null) return NotFound();
         return Ok(teacher);
     }
-
-    [HttpPost]
-    public async Task<ActionResult<TeacherDto>> CreateTeacher([FromBody] TeacherDto createTeacherRequest)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-        if (createTeacherRequest.Type != "Professor" && createTeacherRequest.Type != "Faculty Practitioner")
-            return BadRequest(new { message = "Invalid teacher type. Must be 'Professor' or 'Faculty Practitioner'." });
-        var createdTeacherDto = await service.CreateCourseAsync(createTeacherRequest);
-        return CreatedAtAction(nameof(GetTeacher), new { id = createdTeacherDto.Id }, createdTeacherDto);
-    }
-
-    [HttpPost("teacher-qualifications")]
-    public async Task<IActionResult> AddTeacherQualifications([FromBody] CreateTeacherQualificationRequest request)
-    {
-        try
-        {
-            await service.AddTeacherQualificationsAsync(request);
-            return Ok(new { message = "Teacher qualifications added successfully." });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
 }

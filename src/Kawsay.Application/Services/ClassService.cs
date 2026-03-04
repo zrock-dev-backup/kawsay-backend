@@ -29,8 +29,6 @@ public class ClassService(IClassRepository repository)
                     ? new TeacherDto
                     {
                         Id = entity.Teacher.Id,
-                        Name = entity.Teacher.Name,
-                        Type = entity.Teacher.Type,
                     }
                     : null,
                 ClassType = MapHelp(entity.ClassType),
@@ -66,8 +64,6 @@ public class ClassService(IClassRepository repository)
                 ? new TeacherDto
                 {
                     Id = entity.Teacher.Id,
-                    Name = entity.Teacher.Name,
-                    Type = entity.Teacher.Type,
                 }
                 : null,
             ClassType = MapHelp(entity.ClassType),
@@ -122,8 +118,6 @@ public class ClassService(IClassRepository repository)
                 ? new TeacherDto
                 {
                     Id = createdEntity.Teacher.Id,
-                    Name = createdEntity.Teacher.Name,
-                    Type = createdEntity.Teacher.Type,
                 }
                 : null,
             ClassType = MapHelp(createdEntity.ClassType),

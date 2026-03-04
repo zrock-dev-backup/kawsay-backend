@@ -29,7 +29,6 @@ public class ClassesController(
             CourseName = lectureModel.CourseDto.Name,
             CourseCode = lectureModel.CourseDto.Code,
             TeacherId = lectureModel.TeacherDto?.Id,
-            TeacherName = lectureModel.TeacherDto?.Name,
             ClassOccurrences = lectureModel.ClassOccurrences,
             PeriodPreferences = lectureModel.PeriodPreferences.Select(p => new DayPeriodPreferenceDto
             {
@@ -57,7 +56,6 @@ public class ClassesController(
             CourseName = createdClassModel.CourseDto.Name,
             CourseCode = createdClassModel.CourseDto.Code,
             TeacherId = createdClassModel.TeacherDto?.Id,
-            TeacherName = createdClassModel.TeacherDto?.Name,
             Length = createdClassModel.Length,
             Frequency = createdClassModel.Frequency,
             Capacity = createdClassModel.Capacity,
@@ -106,7 +104,6 @@ public class ClassesController(
             CourseName = createdClassModel.CourseDto.Name,
             CourseCode = createdClassModel.CourseDto.Code,
             TeacherId = createdClassModel.TeacherDto?.Id,
-            TeacherName = createdClassModel.TeacherDto?.Name,
             ClassOccurrences = createdClassModel.ClassOccurrences,
             PeriodPreferences = createdClassModel.PeriodPreferences.Select(p => new DayPeriodPreferenceDto
             {
@@ -144,7 +141,6 @@ public class ClassesController(
                 CourseName = updatedClassModel.CourseDto.Name,
                 CourseCode = updatedClassModel.CourseDto.Code,
                 TeacherId = updatedClassModel.TeacherDto?.Id,
-                TeacherName = updatedClassModel.TeacherDto?.Name,
                 Length = updatedClassModel.Length,
                 Frequency = updatedClassModel.Frequency,
                 ClassType = updatedClassModel.ClassType,

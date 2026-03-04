@@ -6,7 +6,6 @@ public record TimetableAssignmentDto(
     int AssignmentId,
     int TimetableId,
     int TeacherId,
-    string TeacherFullName,
     int StartWeek,
     int EndWeek,
     int MaximumWorkload,

@@ -23,7 +23,6 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
     public DbSet<CoursePrerequisiteEntity> CoursePrerequisites { get; set; }
     public DbSet<HolidayEntity> Holidays { get; set; }
     public DbSet<ClassTypeConfigurationEntity> ClassTypeConfigurations { get; set; }
-    public DbSet<TeacherQualificationEntity> TeacherQualifications { get; set; }
     public DbSet<CourseRequirementEntity> CourseRequirements { get; set; }
     public DbSet<TimetableAssignmentEntity> TimetableAssignments { get; set; } 
     public DbSet<StagedPlacementEntity> StagedPlacements { get; set; }
@@ -175,19 +174,6 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
             .HasForeignKey(h => h.TimetableId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<TeacherQualificationEntity>()
-            .HasKey(tq => new { tq.TeacherId, tq.CourseId }); // Composite Key
-
-        modelBuilder.Entity<TeacherQualificationEntity>()
-            .HasOne(tq => tq.Teacher)
-            .WithMany(t => t.CourseQualifications)
-            .HasForeignKey(tq => tq.TeacherId);
-
-        modelBuilder.Entity<TeacherQualificationEntity>()
-            .HasOne(tq => tq.Course)
-            .WithMany(c => c.TeacherQualifications)
-            .HasForeignKey(tq => tq.CourseId);
-
         modelBuilder.Entity<ClassTypeConfigurationEntity>()
             .HasIndex(c => c.ClassType)
             .IsUnique();
@@ -282,6 +268,12 @@ public class KawsayDbContext(DbContextOptions<KawsayDbContext> options) : DbCont
         modelBuilder.Entity<StudentIssueEntity>(entity =>
         {
             entity.HasIndex(i => new { i.TimetableId, i.StudentId });
+        });
+        
+        modelBuilder.Entity<TeacherEntity>(entity => 
+        {
+            entity.HasKey(t => t.Id);
+            entity.HasIndex(t => t.ExternalTeacherId).IsUnique(); // Performance for lookups
         });
     }
 }

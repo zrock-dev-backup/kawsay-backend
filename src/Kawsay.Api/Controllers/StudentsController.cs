@@ -79,7 +79,6 @@ public class StudentsController(
                 CourseName = cls.Course.Name,
                 CourseCode = cls.Course.Code,
                 TeacherId = cls.Teacher?.Id,
-                TeacherName = cls.Teacher?.Name,
                 Length = cls.Length,
                 Frequency = cls.Frequency,
                 ClassType = cls.ClassType == ClassType.Masterclass ? ClassTypeDto.Masterclass : ClassTypeDto.Lab,
