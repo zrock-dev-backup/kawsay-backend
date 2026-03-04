@@ -12,15 +12,20 @@ public class TimetableGenerationService(
     ICourseRequirementRepository requirementRepo,
     IAcademicStructureRepository academicRepo,
     IStagedPlacementRepository stagedPlacementRepo, // <-- NEW: To save results
-    IUnitOfWork unitOfWork,                         // <-- NEW: For transactional safety
+    IUnitOfWork unitOfWork, // <-- NEW: For transactional safety
     ISolverClient solverClient)
 {
-    public async Task<Result<GeneratedTimetableDto>> GenerateTimetableAsync(int timetableId, CancellationToken cancellationToken = default)
+    public async Task<Result<GeneratedTimetableDto>> GenerateTimetableAsync(int timetableId,
+        CancellationToken cancellationToken = default)
     {
+        using var activity = KawsayTelemetry.ActivitySource.StartActivity("GenerateTimetable");
+        activity?.SetTag(KawsayTelemetry.Attributes.TimetableId, timetableId);
+
         var timetable = await timetableRepo.GetByIdAsync(timetableId);
         if (timetable == null)
             return Result<GeneratedTimetableDto>.Failure(Error.NotFound("Timetable.NotFound", "Timetable not found"));
 
+        using var dataLoadActivity = KawsayTelemetry.ActivitySource.StartActivity("HydrateSolverContext");
         var requirements = await requirementRepo.GetByTimetableIdAsync(timetableId);
         var cohorts = await academicRepo.GetCohortsByTimetableAsync(timetableId);
 
@@ -31,14 +36,25 @@ public class TimetableGenerationService(
             Cohorts = cohorts
         };
 
+        activity?.SetTag(KawsayTelemetry.Attributes.ConstraintCount, context.Requirements.Count);
+
         // 1. Fire the ECU (gRPC Solver)
         var result = await solverClient.SolveAsync(context, cancellationToken);
-        if (result.IsFailure) return Result<GeneratedTimetableDto>.Failure(result.Error);
+        if (result.IsFailure)
+        {
+            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, result.Error.Message);
+            return Result<GeneratedTimetableDto>.Failure(result.Error);
+        }
+
+        activity?.SetTag(KawsayTelemetry.Attributes.JobId, result.Value!.JobId);
+        activity?.SetTag(KawsayTelemetry.Attributes.GenerationStatus, result.Value!.Status);
+        activity?.SetTag(KawsayTelemetry.Attributes.QualityScore, result.Value!.QualityScore);
 
         // 2. Persist the generated abstract grid back into physical database entities
         await unitOfWork.BeginTransactionAsync();
         try
         {
+            using var dbActivity = KawsayTelemetry.ActivitySource.StartActivity("PersistResults");
             // Clear out any old staged placements for this specific timetable
             await stagedPlacementRepo.DeleteAllForTimetableAsync(timetableId);
 
@@ -52,7 +68,7 @@ public class TimetableGenerationService(
             foreach (var item in result.Value!.ScheduledItems)
             {
                 var reqId = ParseReqId(item.ReferenceId);
-                
+
                 // Bounds safety check
                 if (item.DayIndex >= orderedDays.Count || item.StartSlotIndex >= orderedPeriods.Count)
                     continue;
@@ -98,7 +114,9 @@ public class TimetableGenerationService(
         catch (Exception ex)
         {
             await unitOfWork.RollbackTransactionAsync();
-            return Result<GeneratedTimetableDto>.Failure(Error.Failure("Persistence.Failed", $"Failed to save generated schedule: {ex.Message}"));
+            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+            return Result<GeneratedTimetableDto>.Failure(Error.Failure("Persistence.Failed",
+                $"Failed to save generated schedule: {ex.Message}"));
         }
     }
 

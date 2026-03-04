@@ -14,18 +14,26 @@ public class SolverGrpcClient(
     public async Task<Result<SchedulingResult>> SolveAsync(SchedulingContext context,
         CancellationToken cancellationToken = default)
     {
+        using var activity = KawsayTelemetry.ActivitySource.StartActivity("Grpc.DispatchSolver");
+        activity?.SetTag(KawsayTelemetry.Attributes.JobId, context.JobId);
         try
         {
             var request = MapDomainToProto(context);
+            activity?.SetTag(KawsayTelemetry.Attributes.ActivityCount, request.Activities.Count);
+            activity?.SetTag("solver.raw.teachers_count", request.Teachers.Count);
+            activity?.SetTag("solver.raw.groups_count", request.StudentGroups.Count);
+            activity?.SetTag("solver.config.max_time", request.Config.MaxSolveTimeSeconds);
             logger.LogInformation("Sending grpc request for Job {JobId}. Activities: {Count}", context.JobId,
                 request.Activities.Count);
 
             var response = await grpcClient.SolveAsync(request, cancellationToken: cancellationToken);
+            activity?.SetTag("solver.response.status", response.Status.ToString());
 
             return Result<SchedulingResult>.Success(MapProtoToDomain(response, request));
         }
         catch (RpcException ex)
         {
+            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Status.Detail);
             logger.LogError(ex, "gRPC Call failed for Job {JobId}. Status: {Status}", context.JobId,
                 ex.Status.StatusCode);
             return Result<SchedulingResult>.Failure(Error.Failure("Solver.ConnectionError",
@@ -33,6 +41,7 @@ public class SolverGrpcClient(
         }
         catch (Exception ex)
         {
+            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
             logger.LogError(ex, "Solver failed for Job {JobId}", context.JobId);
             return Result<SchedulingResult>.Failure(Error.Failure("Solver.InternalError", ex.Message));
         }

@@ -7,6 +7,24 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- 🚀 OPENTELEMETRY IMPLEMENTATION -->
+
+        <!-- Core components are STABLE (1.9.0 is current safe baseline) -->
+        <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.15.0" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.9.0" />
+
+        <!-- AspNetCore and Http are STABLE -->
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.9.0" />
+
+        <!-- EF Core and Grpc Client are PRE-RELEASE (Must use 1.0.0-beta.* or similar) -->
+        <!-- These versions allow .NET to restore the latest compatible beta -->
+        <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.0.0-beta.12" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.6.0-beta.3" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Grpc.Net.ClientFactory" Version="2.61.0" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.8" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.5">
@@ -18,14 +36,14 @@
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
         <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0">
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-          <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.5" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Kawsay.Application\Application.csproj" />
-      <ProjectReference Include="..\Kawsay.Infrastructure\Infrastructure.csproj" />
+        <ProjectReference Include="..\Kawsay.Application\Application.csproj" />
+        <ProjectReference Include="..\Kawsay.Infrastructure\Infrastructure.csproj" />
     </ItemGroup>
 </Project>
