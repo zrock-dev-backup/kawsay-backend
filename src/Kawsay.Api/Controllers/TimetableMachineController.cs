@@ -87,6 +87,38 @@ public class TimetableMachineController(
 
         return Ok(result.Value);
     }
+
+    [HttpGet("stage0/timetables")]
+    [ProducesResponseType(typeof(List<TimetableSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<TimetableSummaryDto>>> GetTimetables()
+    {
+        var result = await stage0.GetAllTimetablesAsync();
+
+        if (!result.IsSuccess)
+            return BadRequest(result.Error);
+
+        return Ok(result.Value);
+    }
+
+    [HttpGet("stage0/timetables/{timetableId:int}")]
+    [ProducesResponseType(typeof(TimetableDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Application.Core.Error), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TimetableDto>> GetTimetable(int timetableId)
+    {
+        var result = await stage0.GetTimetableByIdAsync(timetableId);
+
+        if (!result.IsSuccess)
+        {
+            if (result.Error.Type == Application.Core.ErrorType.NotFound)
+                return NotFound(result.Error);
+
+            return BadRequest(result.Error);
+        }
+
+        return Ok(result.Value);
+    }
 }
 
 public class TimetableCreatedResponse

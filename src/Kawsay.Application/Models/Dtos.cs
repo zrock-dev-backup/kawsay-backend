@@ -31,3 +31,21 @@ public record CourseRequirementCreateDto(
     int FrequencyPerWeek,
     string Priority,
     string ClassType);
+
+// --- Read Models ---
+public record TimetableSummaryDto(
+    int Id,
+    string Name,
+    string Timezone,
+    DateOnly StartDate,
+    DateOnly EndDate);
+
+public record TimetableDto(
+    int Id,
+    string Name,
+    string Timezone,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    List<string> Days,
+    List<PeriodDto> Periods,
+    List<string> SubjectIds);
