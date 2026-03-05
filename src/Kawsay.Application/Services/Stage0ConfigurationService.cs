@@ -1,8 +1,6 @@
 using Application.Core;
 using Application.Interfaces.Persistence;
-using Application.Models;
 using Domain.Entities;
-
 namespace Application.Services;
 
 public class Stage0ConfigurationService(ITimetableRepository timetableRepo, IUnitOfWork unitOfWork)

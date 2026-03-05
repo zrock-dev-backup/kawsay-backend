@@ -27,17 +27,20 @@ builder.Services.AddDbContext<KawsayDbContext>(options =>
         b => b.MigrationsAssembly(typeof(KawsayDbContext).Assembly.FullName)
     );
 });
-// Register Repositories
+
+// Repositories
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
 builder.Services.AddScoped<IRelationalMappingRepository, RelationalMappingRepository>();
-builder.Services.AddScoped<ICourseRequirementRepository, RelationalMappingRepository.CourseRequirementRepository>();
-builder.Services.AddScoped<IStagedPlacementRepository, RelationalMappingRepository.StagedPlacementRepository>();
-// Register Services
+builder.Services.AddScoped<ICourseRequirementRepository, CourseRequirementRepository>();
+builder.Services.AddScoped<IStagedPlacementRepository, StagedPlacementRepository>();
+// Services
 builder.Services.AddScoped<Stage0ConfigurationService>();
 builder.Services.AddScoped<Stage1RelationalMappingService>();
 builder.Services.AddScoped<Stage2ActivityService>();
 builder.Services.AddScoped<TimetableGenerationService>();
+
+// Internal
 builder.Services.AddScoped<ISolverClient, SolverGrpcClient>();
 builder.Services.AddCors(options =>
 {

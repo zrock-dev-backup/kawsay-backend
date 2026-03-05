@@ -1,6 +1,6 @@
 namespace Domain.Entities;
 
-// STAGE 0: Configuration
+// --- STAGE 0: Configuration ---
 public class TimetableEntity
 {
     public int Id { get; set; }
@@ -38,7 +38,7 @@ public class SubjectSelectionEntity
     public TimetableEntity Timetable { get; set; } = default!;
 }
 
-// STAGE 1: Relational Mapping
+// --- STAGE 1: Relational Mapping ---
 public class TeacherAssignmentEntity // The 'Q' Set
 {
     public int Id { get; set; }
@@ -87,14 +87,14 @@ public class DeferredStudentEntity // The 'D' Set
     public TimetableEntity Timetable { get; set; } = default!;
 }
 
-// STAGE 2: Activity Modelling
+// --- STAGE 2: Activity Modelling ---
 public class CourseRequirementEntity // The 'Activity'
 {
     public int Id { get; set; }
     public int TimetableId { get; set; }
     public string SubjectId { get; set; } = string.Empty;
-    public string? TeacherId { get; set; } // Nullable if not yet assigned
-    public string? StudentGroupId { get; set; } // External Cohort/Group ID
+    public string? TeacherId { get; set; }
+    public string? StudentGroupId { get; set; }
     public int DurationInPeriods { get; set; }
     public int FrequencyPerWeek { get; set; }
     public string Priority { get; set; } = "Medium";
@@ -102,7 +102,7 @@ public class CourseRequirementEntity // The 'Activity'
     public TimetableEntity Timetable { get; set; } = default!;
 }
 
-// STAGE 3: Generation State
+// --- STAGE 3: Generation State ---
 public class StagedPlacementEntity
 {
     public int Id { get; set; }
