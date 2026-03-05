@@ -57,42 +57,4 @@ public class StudentsController(
         };
         return Ok(dto);
     }
-
-    [HttpGet("{studentId:int}/available-classes")]
-    public async Task<ActionResult<IEnumerable<AvailableClassDto>>> GetAvailableClassesForStudent(int studentId,
-        [FromQuery] int timetableId)
-    {
-        var student = await studentRepository.GetByIdAsync(studentId);
-        if (student == null)
-        {
-            return NotFound(new { message = $"Student with ID {studentId} not found." });
-        }
-
-        var allTimetableClasses = await classRepository.GetAllAsync(timetableId);
-        var response = allTimetableClasses.Select(cls => new AvailableClassDto
-            {
-                Id = cls.Id,
-                StartDate = cls.StartDate,
-                EndDate = cls.EndDate,
-                TimetableId = cls.TimetableId,
-                CourseId = cls.Course.Id,
-                CourseName = cls.Course.Name,
-                CourseCode = cls.Course.Code,
-                TeacherId = cls.Teacher?.Id,
-                Length = cls.Length,
-                Frequency = cls.Frequency,
-                ClassType = cls.ClassType == ClassType.Masterclass ? ClassTypeDto.Masterclass : ClassTypeDto.Lab,
-                Capacity = cls.Capacity,
-                CurrentEnrollment = cls.Enrollments.Count,
-                ClassOccurrences = cls.ClassOccurrences.Select(o => new ClassOccurrenceDto
-                    { Date = o.Date, StartPeriodId = o.StartPeriodId }).ToList(),
-                PeriodPreferences = cls.PeriodPreferences.Select(p => new DayPeriodPreferenceDto
-                    { DayId = p.DayId, StartPeriodId = p.StartPeriodId }).ToList(),
-                IsEligible = true // Assume eligible by default
-            })
-            .ToList();
-
-        // TODO: Add sorting logic to put retakes first.
-        return Ok(response);
-    }
 }

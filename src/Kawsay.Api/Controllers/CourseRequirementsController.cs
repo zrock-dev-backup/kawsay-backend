@@ -55,14 +55,6 @@ public class CourseRequirementsController(ICourseRequirementService requirementS
         return result.IsSuccess ? NoContent() : HandleFailure(result.Error);
     }
 
-    [HttpPost("preflight-check")]
-    [ProducesResponseType(typeof(PreflightCheckResultDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> RunPreflightCheck([FromBody] CreateCourseRequirementRequestDto request)
-    {
-        var result = await requirementService.RunPreflightCheckAsync(request);
-        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result.Error);
-    }
-
     private ObjectResult HandleFailure(Error error) => error.Type switch
     {
         ErrorType.Validation => BadRequest(new { error.Code, error.Message }),
