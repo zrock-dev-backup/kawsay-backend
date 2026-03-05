@@ -27,7 +27,6 @@ public class ValidationFilterAttribute(ILogger<ValidationFilterAttribute> logger
         var problemDetails = new ValidationProblemDetails
         {
             Status = StatusCodes.Status400BadRequest,
-            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
             Title = "One or more validation errors occurred",
             Detail = "Please refer to the errors property for additional details",
             Instance = context.HttpContext.Request.Path

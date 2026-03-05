@@ -4,7 +4,6 @@ using Api.Middleware;
 using Application.Core;
 using Application.Interfaces.Infrastructure;
 using Application.Interfaces.Persistence;
-using Application.Interfaces.Services;
 using Application.Services;
 using Infrastructure.External;
 using Infrastructure.Persistence;
@@ -36,64 +35,11 @@ builder.Services.AddDbContext<KawsayDbContext>(options =>
         b => b.MigrationsAssembly(typeof(KawsayDbContext).Assembly.FullName)
     );
 });
-builder.Services.AddScoped<ICourseRequirementRepository, CourseRequirementRepository>();
-// builder.Services.AddScoped<IAvailabilityReadModelRepository, AvailabilityReadModelRepository>();
-builder.Services.AddScoped<IAcademicStructureRepository, AcademicStructureRepository>();
-builder.Services.AddScoped<IClassOccurrenceRepository, ClassOccurrenceRepository>();
-builder.Services.AddScoped<IClassRepository, ClassRepository>();
-builder.Services.AddScoped<IClassTypeConfigurationRepository, ClassTypeConfigurationRepository>();
-builder.Services.AddScoped<ICourseRepository, CourseRepository>();
-builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
-builder.Services.AddScoped<IStudentModuleGradeRepository, StudentModuleGradeRepository>();
-builder.Services.AddScoped<IStudentRepository, StudentRepository>();
-builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
-builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
-
-builder.Services.AddScoped<AcademicStructureService>();
-builder.Services.AddScoped<CalendarizationService>();
-builder.Services.AddScoped<ClassService>();
-builder.Services.AddScoped<ConfigurationService>();
-builder.Services.AddScoped<CourseService>();
-builder.Services.AddScoped<EndofModuleService>();
-builder.Services.AddScoped<EnrollmentService>();
-builder.Services.AddScoped<TeacherService>();
-builder.Services.AddScoped<TimetableService>();
-builder.Services.AddScoped<ICourseRequirementService, CourseRequirementService>();
-// builder.Services.AddScoped<ISchedulingEngineService, SchedulingEngineService>();
-builder.Services.AddScoped<ITimetableAssignmentRepository, TimetableAssignmentRepository>();
-builder.Services.AddScoped<ITimetableAssignmentService, TimetableAssignmentService>();
-builder.Services.AddScoped<RosterSyncService>();
-builder.Services.AddScoped<IStagedPlacementRepository, StagedPlacementRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<SchedulingService>();
-builder.Services.AddScoped<IStudentIssueRepository, StudentIssueRepository>();
-builder.Services.AddScoped<IStudentAuditService, StudentAuditService>();
 
 // gRPC implementation
 builder.Services.AddScoped<ISolverClient, SolverGrpcClient>();
 builder.Services.AddScoped<TimetableGenerationService>();
-
-builder.Services.AddTransient<AcademicAuthHandler>(_ =>
-    new AcademicAuthHandler(
-        builder.Configuration["AcademicApi:ServiceAccountUser"] ?? "admin",
-        builder.Configuration["AcademicApi:ServiceAccountRole"] ?? "admin"));
-
-builder.Services.AddHttpClient<IAcademicApiClient, AcademicApiClient>(client =>
-    {
-        var baseUrl = builder.Configuration["ExternalServices:mockSIS"]
-                      ?? throw new InvalidOperationException("ExternalServices:BaseUrl is missing.");
-        client.BaseAddress = new Uri(baseUrl);
-        client.Timeout = TimeSpan.FromSeconds(30);
-    })
-    .AddHttpMessageHandler<AcademicAuthHandler>();
-
-builder.Services.AddHttpClient<IPredictionService, PredictionApiClient>(client =>
-{
-    var baseUrl = builder.Configuration["ExternalServices:PredictionApi"]
-                  ?? throw new InvalidOperationException("ExternalServices:BaseUrl is missing.");
-    client.BaseAddress = new Uri(baseUrl);
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
 
 builder.Services.AddCors(options =>
 {
@@ -137,14 +83,12 @@ builder.Services.AddOpenTelemetry()
                     activity.SetTag("http.request.content_type", httpRequest.ContentType);
 
                     // Capture request body (enable buffering first — see middleware below)
-                    if (httpRequest.ContentLength > 0 && httpRequest.Body.CanSeek)
-                    {
-                        httpRequest.Body.Seek(0, SeekOrigin.Begin);
-                        using var reader = new StreamReader(httpRequest.Body, leaveOpen: true);
-                        var body = reader.ReadToEndAsync().GetAwaiter().GetResult();
-                        activity.SetTag("http.request.body", body);
-                        httpRequest.Body.Seek(0, SeekOrigin.Begin);
-                    }
+                    if (!(httpRequest.ContentLength > 0) || !httpRequest.Body.CanSeek) return;
+                    httpRequest.Body.Seek(0, SeekOrigin.Begin);
+                    using var reader = new StreamReader(httpRequest.Body, leaveOpen: true);
+                    var body = reader.ReadToEndAsync().GetAwaiter().GetResult();
+                    activity.SetTag("http.request.body", body);
+                    httpRequest.Body.Seek(0, SeekOrigin.Begin);
                 };
 
                 // Enrich spans with response data

@@ -1,6 +1,4 @@
 using Application.Core;
-using Application.DTOs;
-using Application.Interfaces.Infrastructure;
 using Application.Interfaces.Persistence;
 using Application.Models.Solver;
 using Domain.Entities;
