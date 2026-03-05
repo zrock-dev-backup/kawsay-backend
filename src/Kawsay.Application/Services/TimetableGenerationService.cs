@@ -1,4 +1,5 @@
 using Application.Core;
+using Application.Interfaces.Infrastructure;
 using Application.Interfaces.Persistence;
 using Application.Models.Solver;
 using Domain.Entities;
@@ -8,13 +9,12 @@ namespace Application.Services;
 public class TimetableGenerationService(
     ITimetableRepository timetableRepo,
     ICourseRequirementRepository requirementRepo,
-    IAcademicStructureRepository academicRepo,
-    IStagedPlacementRepository stagedPlacementRepo, // <-- NEW: To save results
-    IUnitOfWork unitOfWork, // <-- NEW: For transactional safety
+    IRelationalMappingRepository mappingRepo,
+    IStagedPlacementRepository stagedPlacementRepo,
+    IUnitOfWork unitOfWork,
     ISolverClient solverClient)
 {
-    public async Task<Result<GeneratedTimetableDto>> GenerateTimetableAsync(int timetableId,
-        CancellationToken cancellationToken = default)
+    public async Task<Result<GeneratedTimetableDto>> GenerateTimetableAsync(int timetableId, CancellationToken cancellationToken = default)
     {
         using var activity = KawsayTelemetry.ActivitySource.StartActivity("GenerateTimetable");
         activity?.SetTag(KawsayTelemetry.Attributes.TimetableId, timetableId);
@@ -24,19 +24,31 @@ public class TimetableGenerationService(
             return Result<GeneratedTimetableDto>.Failure(Error.NotFound("Timetable.NotFound", "Timetable not found"));
 
         using var dataLoadActivity = KawsayTelemetry.ActivitySource.StartActivity("HydrateSolverContext");
+        
+        // Stage 2: Fetch Activities
         var requirements = await requirementRepo.GetByTimetableIdAsync(timetableId);
-        var cohorts = await academicRepo.GetCohortsByTimetableAsync(timetableId);
+        
+        // Stage 1: Fetch Q Set (Assigned Teachers) and A_T constraints
+        var teacherIds = await mappingRepo.GetTeacherAssignmentsAsync(timetableId);
+        var teacherAvailabilities = new List<TeacherAvailabilityEntity>();
+        
+        foreach (var tId in teacherIds)
+        {
+            var availabilities = await mappingRepo.GetTeacherAvailabilitiesAsync(timetableId, tId);
+            teacherAvailabilities.AddRange(availabilities);
+        }
 
         var context = new SchedulingContext
         {
             Timetable = timetable,
-            Requirements = requirements.ToList(),
-            Cohorts = cohorts
+            Requirements = requirements,
+            AssignedTeacherIds = teacherIds,
+            TeacherAvailabilities = teacherAvailabilities
         };
 
         activity?.SetTag(KawsayTelemetry.Attributes.ConstraintCount, context.Requirements.Count);
 
-        // 1. Fire the ECU (gRPC Solver)
+        // Stage 3: Fire the ECU (gRPC Solver)
         var result = await solverClient.SolveAsync(context, cancellationToken);
         if (result.IsFailure)
         {
@@ -48,30 +60,25 @@ public class TimetableGenerationService(
         activity?.SetTag(KawsayTelemetry.Attributes.GenerationStatus, result.Value!.Status);
         activity?.SetTag(KawsayTelemetry.Attributes.QualityScore, result.Value!.QualityScore);
 
-        // 2. Persist the generated abstract grid back into physical database entities
+        // Persist the generated abstract grid back into physical database entities
         await unitOfWork.BeginTransactionAsync();
         try
         {
             using var dbActivity = KawsayTelemetry.ActivitySource.StartActivity("PersistResults");
-            // Clear out any old staged placements for this specific timetable
+            
             await stagedPlacementRepo.DeleteAllForTimetableAsync(timetableId);
 
-            // Fetch deterministic mappings for Days and Periods 
-            // (Assumes IDs are ordered chronologically just as they were built for the grid)
             var orderedDays = timetable.Days.OrderBy(d => d.Id).ToList();
             var orderedPeriods = timetable.Periods.OrderBy(p => p.Id).ToList();
-
             var dtoClasses = new List<GeneratedClassDto>();
 
             foreach (var item in result.Value!.ScheduledItems)
             {
                 var reqId = ParseReqId(item.ReferenceId);
-
-                // Bounds safety check
+                
                 if (item.DayIndex >= orderedDays.Count || item.StartSlotIndex >= orderedPeriods.Count)
                     continue;
 
-                // Map Solver Matrix Index -> Database Primary Key
                 var dayId = orderedDays[item.DayIndex].Id;
                 var periodId = orderedPeriods[item.StartSlotIndex].Id;
 
@@ -95,7 +102,6 @@ public class TimetableGenerationService(
                 });
             }
 
-            // Lock it in
             await unitOfWork.CommitTransactionAsync();
 
             var dto = new GeneratedTimetableDto
@@ -113,8 +119,7 @@ public class TimetableGenerationService(
         {
             await unitOfWork.RollbackTransactionAsync();
             activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            return Result<GeneratedTimetableDto>.Failure(Error.Failure("Persistence.Failed",
-                $"Failed to save generated schedule: {ex.Message}"));
+            return Result<GeneratedTimetableDto>.Failure(Error.Failure("Persistence.Failed", $"Failed to save generated schedule: {ex.Message}"));
         }
     }
 
@@ -124,4 +129,23 @@ public class TimetableGenerationService(
         if (parts.Length >= 2 && int.TryParse(parts[1], out var id)) return id;
         return 0;
     }
+}
+
+// Supporting DTOs for the return signature
+public class GeneratedTimetableDto
+{
+    public string JobId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public long Score { get; set; }
+    public List<GeneratedClassDto> Classes { get; set; } = [];
+}
+
+public class GeneratedClassDto
+{
+    public string TempId { get; set; } = string.Empty;
+    public int RequirementId { get; set; }
+    public int DayIndex { get; set; }
+    public int StartPeriodIndex { get; set; }
+    public int Duration { get; set; }
 }

@@ -11,33 +11,33 @@ public class SolverGrpcClient(
     TimetablingService.TimetablingServiceClient grpcClient,
     ILogger<SolverGrpcClient> logger) : ISolverClient
 {
-    public async Task<Result<SchedulingResult>> SolveAsync(SchedulingContext context,
-        CancellationToken cancellationToken = default)
+    public async Task<Result<SchedulingResult>> SolveAsync(SchedulingContext context, CancellationToken cancellationToken = default)
     {
         using var activity = KawsayTelemetry.ActivitySource.StartActivity("Grpc.DispatchSolver");
         activity?.SetTag(KawsayTelemetry.Attributes.JobId, context.JobId);
+
         try
         {
             var request = MapDomainToProto(context);
+            
             activity?.SetTag(KawsayTelemetry.Attributes.ActivityCount, request.Activities.Count);
             activity?.SetTag("solver.raw.teachers_count", request.Teachers.Count);
             activity?.SetTag("solver.raw.groups_count", request.StudentGroups.Count);
             activity?.SetTag("solver.config.max_time", request.Config.MaxSolveTimeSeconds);
-            logger.LogInformation("Sending grpc request for Job {JobId}. Activities: {Count}", context.JobId,
-                request.Activities.Count);
 
+            logger.LogInformation("Sending grpc request for Job {JobId}. Activities: {Count}", context.JobId, request.Activities.Count);
+            
             var response = await grpcClient.SolveAsync(request, cancellationToken: cancellationToken);
+            
             activity?.SetTag("solver.response.status", response.Status.ToString());
-
+            
             return Result<SchedulingResult>.Success(MapProtoToDomain(response, request));
         }
         catch (RpcException ex)
         {
             activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Status.Detail);
-            logger.LogError(ex, "gRPC Call failed for Job {JobId}. Status: {Status}", context.JobId,
-                ex.Status.StatusCode);
-            return Result<SchedulingResult>.Failure(Error.Failure("Solver.ConnectionError",
-                $"gRPC connection failed: {ex.Status.Detail}"));
+            logger.LogError(ex, "gRPC Call failed for Job {JobId}. Status: {Status}", context.JobId, ex.Status.StatusCode);
+            return Result<SchedulingResult>.Failure(Error.Failure("Solver.ConnectionError", $"gRPC connection failed: {ex.Status.Detail}"));
         }
         catch (Exception ex)
         {
@@ -60,22 +60,44 @@ public class SolverGrpcClient(
             }
         };
 
-        // 1. Map Teachers (derived from requirements)
-        var uniqueTeacherIds = context.Requirements
-            .Where(r => r.PreferredTeacherId.HasValue)
-            .Select(r => r.PreferredTeacherId!.Value)
-            .Distinct();
+        // Deterministic ordering to map Database IDs to 0-based Solver Grid Indices
+        var orderedDays = context.Timetable.Days.OrderBy(d => d.Id).ToList();
+        var orderedPeriods = context.Timetable.Periods.OrderBy(p => p.Id).ToList();
 
-        foreach (var tId in uniqueTeacherIds)
+        // 1. Map Teachers & Availabilities (A_T)
+        var hardConstraints = context.TeacherAvailabilities
+            .Where(a => a.Level == ConstraintLevel.Hard)
+            .ToList();
+
+        foreach (var tId in context.AssignedTeacherIds.Distinct())
         {
-            proto.Teachers.Add(new Teacher { Id = tId.ToString(), Name = $"Teacher {tId}" });
+            var pTeacher = new Teacher { Id = tId, Name = $"Teacher {tId}" };
+            
+            // Map hard constraints to unavailable slots
+            var tConstraints = hardConstraints.Where(c => c.TeacherId == tId);
+            foreach(var c in tConstraints)
+            {
+                var dayIndex = orderedDays.FindIndex(d => d.Id == c.DayId);
+                var periodIndex = orderedPeriods.FindIndex(p => p.Id == c.PeriodId);
+                
+                if (dayIndex >= 0 && periodIndex >= 0)
+                {
+                    pTeacher.UnavailableSlots.Add(new TimeSlot { DayIndex = dayIndex, SlotIndex = periodIndex });
+                }
+            }
+            
+            proto.Teachers.Add(pTeacher);
         }
 
         // 2. Map Student Groups
-        var allGroups = context.Cohorts.SelectMany(c => c.StudentGroups).ToList();
-        foreach (var g in allGroups)
+        var groupIds = context.Requirements
+            .Where(r => !string.IsNullOrEmpty(r.StudentGroupId))
+            .Select(r => r.StudentGroupId!)
+            .Distinct();
+
+        foreach (var gId in groupIds)
         {
-            proto.StudentGroups.Add(new StudentGroup { Id = g.Id.ToString(), Name = g.Name });
+            proto.StudentGroups.Add(new StudentGroup { Id = gId, Name = $"Group {gId}" });
         }
 
         // 3. Map Activities (Explode Requirements)
@@ -85,20 +107,19 @@ public class SolverGrpcClient(
             for (int i = 0; i < req.FrequencyPerWeek; i++)
             {
                 var activityId = $"REQ_{req.Id}_{i}";
-
                 var pActivity = new Activity
                 {
                     Id = activityId,
-                    Name = req.Course.Code, // Using Code as Name for brevity
-                    TeacherId = req.PreferredTeacherId?.ToString() ?? "",
+                    Name = req.SubjectId, 
+                    TeacherId = req.TeacherId ?? "",
                     DurationInSlots = req.DurationInPeriods
                 };
 
-                if (req.StudentGroupId.HasValue)
+                if (!string.IsNullOrEmpty(req.StudentGroupId))
                 {
-                    pActivity.StudentGroupIds.Add(req.StudentGroupId.Value.ToString());
+                    pActivity.StudentGroupIds.Add(req.StudentGroupId);
                 }
-                
+
                 proto.Activities.Add(pActivity);
             }
         }
@@ -116,7 +137,6 @@ public class SolverGrpcClient(
             Message = proto.Message
         };
 
-        // Create lookup for durations to enrich result
         var durationMap = request.Activities.ToDictionary(a => a.Id, a => a.DurationInSlots);
 
         foreach (var item in proto.ScheduledActivities)
