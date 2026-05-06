@@ -40,6 +40,10 @@ builder.Services.AddScoped<Stage1RelationalMappingService>();
 builder.Services.AddScoped<Stage2ActivityService>();
 builder.Services.AddScoped<TimetableGenerationService>();
 
+// Add to Services section
+builder.Services.AddScoped<IFacultyAvailabilityRepository, FacultyAvailabilityRepository>();
+builder.Services.AddScoped<FacultyAvailabilityService>();
+
 // Internal
 builder.Services.AddScoped<ISolverClient, SolverGrpcClient>();
 builder.Services.AddCors(options =>

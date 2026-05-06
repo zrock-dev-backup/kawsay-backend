@@ -34,4 +34,22 @@ public class Stage2ActivityService(ICourseRequirementRepository reqRepo, IUnitOf
             return Result<int>.Failure(Error.Failure("Stage2.Failed", ex.Message));
         }
     }
+    
+    public async Task<Result<List<ActivityDto>>> GetActivitiesAsync(int timetableId)
+    {
+        var requirements = await reqRepo.GetByTimetableIdAsync(timetableId);
+    
+        var dtos = requirements.Select(r => new ActivityDto(
+            r.Id,
+            r.SubjectId,
+            r.TeacherId,
+            r.StudentGroupId,
+            r.DurationInPeriods,
+            r.FrequencyPerWeek,
+            r.Priority,
+            r.ClassType
+        )).ToList();
+
+        return Result<List<ActivityDto>>.Success(dtos);
+    }
 }

@@ -47,6 +47,7 @@ public class TeacherAssignmentEntity // The 'Q' Set
     public TimetableEntity Timetable { get; set; } = default!;
 }
 
+
 public class TeacherAvailabilityEntity // Base constraints for A_T
 {
     public int Id { get; set; }
@@ -54,7 +55,7 @@ public class TeacherAvailabilityEntity // Base constraints for A_T
     public string TeacherId { get; set; } = string.Empty;
     public int DayId { get; set; }
     public int PeriodId { get; set; }
-    public ConstraintLevel Level { get; set; }
+    public int WeightPercentage { get; set; } // Replaced ConstraintLevel
     public TimetableEntity Timetable { get; set; } = default!;
 }
 
@@ -67,14 +68,14 @@ public class StudentEnrollmentEntity // The 'E' Set
     public TimetableEntity Timetable { get; set; } = default!;
 }
 
-public class StudentAvailabilityEntity // Base constraints for A_S
+public class StudentAvailabilityEntity
 {
     public int Id { get; set; }
     public int TimetableId { get; set; }
     public string StudentId { get; set; } = string.Empty;
     public int DayId { get; set; }
     public int PeriodId { get; set; }
-    public ConstraintLevel Level { get; set; }
+    public int WeightPercentage { get; set; }
     public TimetableEntity Timetable { get; set; } = default!;
 }
 

@@ -11,7 +11,8 @@ public class SolverGrpcClient(
     TimetablingService.TimetablingServiceClient grpcClient,
     ILogger<SolverGrpcClient> logger) : ISolverClient
 {
-    public async Task<Result<SchedulingResult>> SolveAsync(SchedulingContext context, CancellationToken cancellationToken = default)
+    public async Task<Result<SchedulingResult>> SolveAsync(SchedulingContext context,
+        CancellationToken cancellationToken = default)
     {
         using var activity = KawsayTelemetry.ActivitySource.StartActivity("Grpc.DispatchSolver");
         activity?.SetTag(KawsayTelemetry.Attributes.JobId, context.JobId);
@@ -19,25 +20,28 @@ public class SolverGrpcClient(
         try
         {
             var request = MapDomainToProto(context);
-            
+
             activity?.SetTag(KawsayTelemetry.Attributes.ActivityCount, request.Activities.Count);
             activity?.SetTag("solver.raw.teachers_count", request.Teachers.Count);
             activity?.SetTag("solver.raw.groups_count", request.StudentGroups.Count);
             activity?.SetTag("solver.config.max_time", request.Config.MaxSolveTimeSeconds);
 
-            logger.LogInformation("Sending grpc request for Job {JobId}. Activities: {Count}", context.JobId, request.Activities.Count);
-            
+            logger.LogInformation("Sending grpc request for Job {JobId}. Activities: {Count}", context.JobId,
+                request.Activities.Count);
+
             var response = await grpcClient.SolveAsync(request, cancellationToken: cancellationToken);
-            
+
             activity?.SetTag("solver.response.status", response.Status.ToString());
-            
+
             return Result<SchedulingResult>.Success(MapProtoToDomain(response, request));
         }
         catch (RpcException ex)
         {
             activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Status.Detail);
-            logger.LogError(ex, "gRPC Call failed for Job {JobId}. Status: {Status}", context.JobId, ex.Status.StatusCode);
-            return Result<SchedulingResult>.Failure(Error.Failure("Solver.ConnectionError", $"gRPC connection failed: {ex.Status.Detail}"));
+            logger.LogError(ex, "gRPC Call failed for Job {JobId}. Status: {Status}", context.JobId,
+                ex.Status.StatusCode);
+            return Result<SchedulingResult>.Failure(Error.Failure("Solver.ConnectionError",
+                $"gRPC connection failed: {ex.Status.Detail}"));
         }
         catch (Exception ex)
         {
@@ -66,26 +70,26 @@ public class SolverGrpcClient(
 
         // 1. Map Teachers & Availabilities (A_T)
         var hardConstraints = context.TeacherAvailabilities
-            .Where(a => a.Level == ConstraintLevel.Hard)
+            .Where(a => a.WeightPercentage == 100)
             .ToList();
 
         foreach (var tId in context.AssignedTeacherIds.Distinct())
         {
             var pTeacher = new Teacher { Id = tId, Name = $"Teacher {tId}" };
-            
+
             // Map hard constraints to unavailable slots
             var tConstraints = hardConstraints.Where(c => c.TeacherId == tId);
-            foreach(var c in tConstraints)
+            foreach (var c in tConstraints)
             {
                 var dayIndex = orderedDays.FindIndex(d => d.Id == c.DayId);
                 var periodIndex = orderedPeriods.FindIndex(p => p.Id == c.PeriodId);
-                
+
                 if (dayIndex >= 0 && periodIndex >= 0)
                 {
                     pTeacher.UnavailableSlots.Add(new TimeSlot { DayIndex = dayIndex, SlotIndex = periodIndex });
                 }
             }
-            
+
             proto.Teachers.Add(pTeacher);
         }
 
@@ -110,7 +114,7 @@ public class SolverGrpcClient(
                 var pActivity = new Activity
                 {
                     Id = activityId,
-                    Name = req.SubjectId, 
+                    Name = req.SubjectId,
                     TeacherId = req.TeacherId ?? "",
                     DurationInSlots = req.DurationInPeriods
                 };

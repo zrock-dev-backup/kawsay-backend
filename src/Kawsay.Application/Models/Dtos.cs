@@ -49,3 +49,22 @@ public record TimetableDto(
     List<string> Days,
     List<PeriodDto> Periods,
     List<string> SubjectIds);
+
+public record ActivityDto(
+    int Id,
+    string SubjectId,
+    string? TeacherId,
+    string? StudentGroupId,
+    int DurationInPeriods,
+    int FrequencyPerWeek,
+    string Priority,
+    string ClassType);
+
+public class ActivitySummaryDto
+{
+    public string SubjectId { get; set; } = string.Empty;
+    public string? TeacherId { get; set; }
+    public string? StudentGroupId { get; set; }
+    public string ClassType { get; set; } = string.Empty;
+    public int FrequencyPerWeek { get; set; }
+}

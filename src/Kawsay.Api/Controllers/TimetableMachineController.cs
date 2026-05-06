@@ -24,38 +24,6 @@ public class TimetableMachineController(
         return Ok(new TimetableCreatedResponse { TimetableId = result.Value });
     }
 
-    // --- STAGE 1: Relational Mapping ---
-    [HttpPost("stage1/timetables/{timetableId}/teacher-assignments")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> AddTeacherAssignment(int timetableId, [FromBody] TeacherAssignmentDto request)
-    {
-        var result = await stage1.AddTeacherAssignmentAsync(timetableId, request);
-        return result.IsSuccess ? Ok() : BadRequest(result.Error);
-    }
-
-    [HttpPost("stage1/timetables/{timetableId}/teacher-availability")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> AddTeacherAvailability(int timetableId, [FromBody] TeacherAvailabilityDto request)
-    {
-        var result = await stage1.AddTeacherAvailabilityAsync(timetableId, request);
-        return result.IsSuccess ? Ok() : BadRequest(result.Error);
-    }
-
-    [HttpGet("stage1/timetables/{timetableId}/teachers/{teacherId}/matrix")]
-    [ProducesResponseType(typeof(List<TimeSlotDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<List<TimeSlotDto>>> GetTeacherAvailabilityMatrix(int timetableId, string teacherId)
-    {
-        var result = await stage1.CalculateTeacherAvailabilityMatrixAsync(timetableId, teacherId);
-
-        if (!result.IsSuccess)
-            return BadRequest(result.Error);
-
-        return Ok(result.Value);
-    }
-
     // --- STAGE 2: Activity Modelling ---
     [HttpPost("stage2/timetables/{timetableId}/activities")]
     [ProducesResponseType(typeof(ActivityCreatedResponse), StatusCodes.Status200OK)]
@@ -114,6 +82,38 @@ public class TimetableMachineController(
             if (result.Error.Type == Application.Core.ErrorType.NotFound)
                 return NotFound(result.Error);
 
+            return BadRequest(result.Error);
+        }
+
+        return Ok(result.Value);
+    }
+
+    [HttpGet("stage2/timetables/{timetableId}/activities")]
+    [ProducesResponseType(typeof(List<ActivityDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ActivityDto>>> GetActivities(int timetableId)
+    {
+        var result = await stage2.GetActivitiesAsync(timetableId);
+
+        if (!result.IsSuccess)
+            return BadRequest(result.Error);
+
+        return Ok(result.Value);
+    }
+
+    [HttpGet("stage3/timetables/{timetableId}/schedule")]
+    [ProducesResponseType(typeof(List<GeneratedClassDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<GeneratedClassDto>>> GetSchedule(
+        int timetableId,
+        [FromServices] TimetableGenerationService generationService)
+    {
+        var result = await generationService.GetScheduleAsync(timetableId);
+
+        if (!result.IsSuccess)
+        {
+            if (result.Error.Type == Application.Core.ErrorType.NotFound)
+                return NotFound(result.Error);
+            
             return BadRequest(result.Error);
         }
 

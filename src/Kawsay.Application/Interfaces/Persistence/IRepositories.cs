@@ -13,15 +13,30 @@ public interface IRelationalMappingRepository
 {
     Task AddTeacherAssignmentAsync(TeacherAssignmentEntity entity);
     Task<List<string>> GetTeacherAssignmentsAsync(int timetableId);
-    Task AddTeacherAvailabilityAsync(TeacherAvailabilityEntity entity);
-    Task<List<TeacherAvailabilityEntity>> GetTeacherAvailabilitiesAsync(int timetableId, string teacherId);
 
+    // Teacher Availability
+    Task AddTeacherAvailabilityAsync(TeacherAvailabilityEntity entity);
+
+    Task<TeacherAvailabilityEntity?> GetTeacherAvailabilityAsync(int timetableId, string teacherId, int dayId,
+        int periodId);
+
+    Task<List<TeacherAvailabilityEntity>> GetTeacherAvailabilitiesAsync(int timetableId, string teacherId);
+    void RemoveTeacherAvailability(TeacherAvailabilityEntity entity);
+
+    // Student Enrollment
     Task AddStudentEnrollmentAsync(StudentEnrollmentEntity entity);
     Task<List<StudentEnrollmentEntity>> GetStudentEnrollmentsAsync(int timetableId, string studentId);
 
+    // Student Availability
     Task AddStudentAvailabilityAsync(StudentAvailabilityEntity entity);
-    Task<List<StudentAvailabilityEntity>> GetStudentAvailabilitiesAsync(int timetableId, string studentId);
 
+    Task<StudentAvailabilityEntity?> GetStudentAvailabilityAsync(int timetableId, string studentId, int dayId,
+        int periodId);
+
+    Task<List<StudentAvailabilityEntity>> GetStudentAvailabilitiesAsync(int timetableId, string studentId);
+    void RemoveStudentAvailability(StudentAvailabilityEntity entity);
+
+    // Deferred Students
     Task AddDeferredStudentAsync(DeferredStudentEntity entity);
     Task<List<DeferredStudentEntity>> GetDeferredStudentsAsync(int timetableId);
 }
@@ -36,4 +51,5 @@ public interface IStagedPlacementRepository
 {
     Task AddAsync(StagedPlacementEntity entity);
     Task DeleteAllForTimetableAsync(int timetableId);
+    Task<List<StagedPlacementEntity>> GetByTimetableIdAsync(int timetableId);
 }

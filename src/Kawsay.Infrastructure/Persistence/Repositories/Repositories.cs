@@ -21,12 +21,23 @@ public class RelationalMappingRepository(KawsayDbContext context) : IRelationalM
     public async Task<List<string>> GetTeacherAssignmentsAsync(int timetableId) => await context.TeacherAssignments
         .Where(t => t.TimetableId == timetableId).Select(t => t.TeacherId).ToListAsync();
 
+// --- Teacher Availability ---
     public async Task AddTeacherAvailabilityAsync(TeacherAvailabilityEntity entity) =>
         await context.TeacherAvailabilities.AddAsync(entity);
 
+    public async Task<TeacherAvailabilityEntity?> GetTeacherAvailabilityAsync(int timetableId, string teacherId,
+        int dayId, int periodId) =>
+        await context.TeacherAvailabilities
+            .FirstOrDefaultAsync(t =>
+                t.TimetableId == timetableId && t.TeacherId == teacherId && t.DayId == dayId && t.PeriodId == periodId);
+
     public async Task<List<TeacherAvailabilityEntity>>
-        GetTeacherAvailabilitiesAsync(int timetableId, string teacherId) => await context.TeacherAvailabilities
-        .Where(t => t.TimetableId == timetableId && t.TeacherId == teacherId).ToListAsync();
+        GetTeacherAvailabilitiesAsync(int timetableId, string teacherId) =>
+        await context.TeacherAvailabilities
+            .Where(t => t.TimetableId == timetableId && t.TeacherId == teacherId).ToListAsync();
+
+    public void RemoveTeacherAvailability(TeacherAvailabilityEntity entity) =>
+        context.TeacherAvailabilities.Remove(entity);
 
     public async Task AddStudentEnrollmentAsync(StudentEnrollmentEntity entity) =>
         await context.StudentEnrollments.AddAsync(entity);
@@ -38,9 +49,19 @@ public class RelationalMappingRepository(KawsayDbContext context) : IRelationalM
     public async Task AddStudentAvailabilityAsync(StudentAvailabilityEntity entity) =>
         await context.StudentAvailabilities.AddAsync(entity);
 
+    public async Task<StudentAvailabilityEntity?> GetStudentAvailabilityAsync(int timetableId, string studentId,
+        int dayId, int periodId) =>
+        await context.StudentAvailabilities
+            .FirstOrDefaultAsync(s =>
+                s.TimetableId == timetableId && s.StudentId == studentId && s.DayId == dayId && s.PeriodId == periodId);
+
     public async Task<List<StudentAvailabilityEntity>>
-        GetStudentAvailabilitiesAsync(int timetableId, string studentId) => await context.StudentAvailabilities
-        .Where(a => a.TimetableId == timetableId && a.StudentId == studentId).ToListAsync();
+        GetStudentAvailabilitiesAsync(int timetableId, string studentId) =>
+        await context.StudentAvailabilities
+            .Where(a => a.TimetableId == timetableId && a.StudentId == studentId).ToListAsync();
+
+    public void RemoveStudentAvailability(StudentAvailabilityEntity entity) =>
+        context.StudentAvailabilities.Remove(entity);
 
     public async Task AddDeferredStudentAsync(DeferredStudentEntity entity) =>
         await context.DeferredStudents.AddAsync(entity);
@@ -67,5 +88,14 @@ public class StagedPlacementRepository(KawsayDbContext context) : IStagedPlaceme
             .Join(context.CourseRequirements, p => p.CourseRequirementId, c => c.Id, (p, c) => new { p, c })
             .Where(x => x.c.TimetableId == timetableId).Select(x => x.p).ToListAsync();
         context.StagedPlacements.RemoveRange(placements);
+    }
+
+    public async Task<List<StagedPlacementEntity>> GetByTimetableIdAsync(int timetableId)
+    {
+        return await context.StagedPlacements
+            .Join(context.CourseRequirements, p => p.CourseRequirementId, c => c.Id, (p, c) => new { p, c })
+            .Where(x => x.c.TimetableId == timetableId)
+            .Select(x => x.p)
+            .ToListAsync();
     }
 }

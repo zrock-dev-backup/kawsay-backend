@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Application.Core;
 using Application.Interfaces.Infrastructure;
 using Application.Interfaces.Persistence;
@@ -19,6 +20,7 @@ public class TimetableGenerationService(
     {
         using var activity = KawsayTelemetry.ActivitySource.StartActivity("GenerateTimetable");
         activity?.SetTag(KawsayTelemetry.Attributes.TimetableId, timetableId);
+        
         var timetable = await timetableRepo.GetByIdAsync(timetableId);
         if (timetable == null)
             return Result<GeneratedTimetableDto>.Failure(Error.NotFound("Timetable.NotFound", "Timetable not found"));
@@ -49,7 +51,7 @@ public class TimetableGenerationService(
         var result = await solverClient.SolveAsync(context, cancellationToken);
         if (result.IsFailure)
         {
-            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, result.Error.Message);
+            activity?.SetStatus(ActivityStatusCode.Error, result.Error.Message);
             return Result<GeneratedTimetableDto>.Failure(result.Error);
         }
 
@@ -79,10 +81,29 @@ public class TimetableGenerationService(
                     Length = item.Duration
                 });
 
+                // ENRICHMENT
+                var req = requirements.FirstOrDefault(r => r.Id == reqId);
+                if (req == null)
+                {
+                    // Track warning in OpenTelemetry without needing ILogger
+                    dbActivity?.AddEvent(new ActivityEvent($"Warning: Generated block {item.ReferenceId} matched no known requirement. Metadata omitted."));
+                }
+
                 dtoClasses.Add(new GeneratedClassDto
                 {
-                    TempId = item.ReferenceId, RequirementId = reqId, DayIndex = item.DayIndex,
-                    StartPeriodIndex = item.StartSlotIndex, Duration = item.Duration
+                    TempId = item.ReferenceId,
+                    RequirementId = reqId,
+                    DayIndex = item.DayIndex,
+                    StartPeriodIndex = item.StartSlotIndex,
+                    Duration = item.Duration,
+                    Activity = req == null ? null : new ActivitySummaryDto
+                    {
+                        SubjectId = req.SubjectId,
+                        TeacherId = req.TeacherId,
+                        StudentGroupId = req.StudentGroupId,
+                        ClassType = req.ClassType,
+                        FrequencyPerWeek = req.FrequencyPerWeek
+                    }
                 });
             }
 
@@ -103,6 +124,51 @@ public class TimetableGenerationService(
             return Result<GeneratedTimetableDto>.Failure(Error.Failure("Persistence.Failed",
                 $"Failed to save schedule: {ex.Message}"));
         }
+    }
+
+    public async Task<Result<List<GeneratedClassDto>>> GetScheduleAsync(int timetableId)
+    {
+        var timetable = await timetableRepo.GetByIdAsync(timetableId);
+        if (timetable == null)
+            return Result<List<GeneratedClassDto>>.Failure(Error.NotFound("Timetable.NotFound", "Timetable not found"));
+
+        var placements = await stagedPlacementRepo.GetByTimetableIdAsync(timetableId);
+        var requirements = await requirementRepo.GetByTimetableIdAsync(timetableId);
+
+        var orderedDays = timetable.Days.OrderBy(d => d.Id).ToList();
+        var orderedPeriods = timetable.Periods.OrderBy(p => p.Id).ToList();
+
+        var dtoClasses = new List<GeneratedClassDto>();
+
+        foreach (var placement in placements)
+        {
+            var req = requirements.FirstOrDefault(r => r.Id == placement.CourseRequirementId);
+            if (req == null) continue;
+
+            var dayIndex = orderedDays.FindIndex(d => d.Id == placement.DayId);
+            var periodIndex = orderedPeriods.FindIndex(p => p.Id == placement.StartPeriodId);
+
+            if (dayIndex < 0 || periodIndex < 0) continue;
+
+            dtoClasses.Add(new GeneratedClassDto
+            {
+                TempId = $"DB_REQ_{req.Id}_{placement.Id}",
+                RequirementId = req.Id,
+                DayIndex = dayIndex,
+                StartPeriodIndex = periodIndex,
+                Duration = placement.Length,
+                Activity = new ActivitySummaryDto
+                {
+                    SubjectId = req.SubjectId,
+                    TeacherId = req.TeacherId,
+                    StudentGroupId = req.StudentGroupId,
+                    ClassType = req.ClassType,
+                    FrequencyPerWeek = req.FrequencyPerWeek
+                }
+            });
+        }
+
+        return Result<List<GeneratedClassDto>>.Success(dtoClasses);
     }
 
     private static int ParseReqId(string refId)
@@ -129,4 +195,5 @@ public class GeneratedClassDto
     public int DayIndex { get; set; }
     public int StartPeriodIndex { get; set; }
     public int Duration { get; set; }
+    public ActivitySummaryDto? Activity { get; set; }
 }
